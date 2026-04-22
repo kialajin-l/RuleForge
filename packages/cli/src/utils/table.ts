@@ -282,7 +282,7 @@ export function renderKeyValueTable(data: Record<string, any>, title?: string): 
   }));
 
   return renderTable({
-    title,
+    title: title || '',
     columns,
     data: tableData
   });

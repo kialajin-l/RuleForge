@@ -235,7 +235,7 @@ export function renderKeyValueTable(data, title) {
         value
     }));
     return renderTable({
-        title,
+        title: title || '',
         columns,
         data: tableData
     });

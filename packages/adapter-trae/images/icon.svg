@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="hammerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0088FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0055AA;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="anvilGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0066CC;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#004499;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 铁砧底座 -->
+  <path d="M 120 380 L 392 380 L 372 420 L 140 420 Z" fill="url(#anvilGradient)" />
+  
+  <!-- 铁砧主体 -->
+  <rect x="140" y="320" width="232" height="60" rx="8" fill="url(#anvilGradient)" />
+  
+  <!-- 铁砧顶部 -->
+  <path d="M 160 320 L 180 280 L 332 280 L 352 320 Z" fill="url(#anvilGradient)" />
+  
+  <!-- 锤子手柄 -->
+  <rect x="246" y="120" width="20" height="180" rx="10" fill="#666666" />
+  
+  <!-- 锤子头部 -->
+  <rect x="206" y="100" width="100" height="50" rx="8" fill="url(#hammerGradient)" />
+  
+  <!-- 锤子高光 -->
+  <rect x="216" y="105" width="80" height="8" rx="4" fill="#FFFFFF" opacity="0.3" />
+  
+  <!-- 火花效果 -->
+  <circle cx="180" cy="260" r="4" fill="#FFD700" opacity="0.8" />
+  <circle cx="340" cy="250" r="3" fill="#FFD700" opacity="0.6" />
+  <circle cx="200" cy="240" r="2" fill="#FFD700" opacity="0.7" />
+  <circle cx="320" cy="270" r="3" fill="#FFD700" opacity="0.5" />
+  
+  <!-- RuleForge 文字标识 -->
+  <text x="256" y="480" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#0066CC" text-anchor="middle">
+    RuleForge
+  </text>
+</svg>

@@ -32,9 +32,9 @@ function createProgram(): Command {
     .hook('preAction', (thisCommand) => {
       // 设置日志级别
       const options = thisCommand.opts();
-      if (options.verbose) {
+      if (options['verbose']) {
         logger.setLevel('verbose');
-      } else if (options.silent) {
+      } else if (options['silent']) {
         logger.setLevel('silent');
       }
     });

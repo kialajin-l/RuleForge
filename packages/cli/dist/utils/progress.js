@@ -2,6 +2,7 @@
  * CLI 进度条工具
  * 使用 cli-progress 显示进度条
  */
+// @ts-ignore - cli-progress 没有类型声明文件
 import cliProgress from 'cli-progress';
 import chalk from 'chalk';
 /**

@@ -70,7 +70,7 @@ export async function listCommand(options) {
             confidence: rule.confidence,
             language: rule.compatibility.languages[0],
             framework: rule.compatibility.frameworks?.[0],
-            updatedAt: rule.meta.updated_at
+            updatedAt: rule.meta.updated
         }));
         // 根据格式输出
         switch (format) {
@@ -91,7 +91,6 @@ export async function listCommand(options) {
         // 显示统计信息
         if (format === 'table') {
             logger.newline();
-            const stats = await engine.getRuleStatistics();
             const statsTable = renderStatsTable({
                 totalRules: filteredRules.length,
                 averageConfidence: filteredRules.reduce((sum, r) => sum + r.confidence, 0) / filteredRules.length,

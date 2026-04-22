@@ -33,12 +33,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ruleforge/ruleforge.git"
+    "url": "https://github.com/kialajin-l/RuleForge.git"
   },
   "bugs": {
-    "url": "https://github.com/ruleforge/ruleforge/issues"
+    "url": "https://github.com/kialajin-l/RuleForge/issues"
   },
-  "homepage": "https://ruleforge.dev",
+  "homepage": "https://github.com/kialajin-l/RuleForge#readme",
   "dependencies": {
     "@ruleforge/core": "^0.1.0",
     "commander": "^11.1.0",

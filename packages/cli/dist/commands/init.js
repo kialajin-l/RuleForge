@@ -3,10 +3,8 @@
  */
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { createStepProgress } from '../utils/progress.js';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /**
  * 模板配置
  */

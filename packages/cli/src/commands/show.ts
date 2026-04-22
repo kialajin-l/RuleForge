@@ -2,7 +2,6 @@
  * show 命令：显示指定规则的详细信息
  */
 
-import { Command } from 'commander';
 import { RuleForgeEngine } from '@ruleforge/core';
 import { logger } from '../utils/logger.js';
 import { renderKeyValueTable } from '../utils/table.js';
@@ -41,8 +40,8 @@ export async function showCommand(ruleId: string, options: {
       '版本': rule.meta.version,
       '描述': rule.meta.description || '无描述',
       '作者': rule.meta.authors?.join(', ') || '未知',
-      '创建时间': new Date(rule.meta.created_at).toLocaleString('zh-CN'),
-      '更新时间': new Date(rule.meta.updated_at).toLocaleString('zh-CN'),
+      '创建时间': new Date(rule.meta.created).toLocaleString('zh-CN'),
+      '更新时间': new Date(rule.meta.updated).toLocaleString('zh-CN'),
       '置信度': rule.confidence
     };
     

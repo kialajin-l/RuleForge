@@ -26,7 +26,7 @@ export async function deleteCommand(ruleId, options) {
         logger.keyValue('规则名称', rule.meta.name);
         logger.keyValue('版本', rule.meta.version);
         logger.keyValue('置信度', rule.confidence);
-        logger.keyValue('创建时间', new Date(rule.meta.created_at).toLocaleString('zh-CN'));
+        logger.keyValue('创建时间', new Date(rule.meta.created).toLocaleString('zh-CN'));
         // 确认删除
         if (!force) {
             logger.newline();

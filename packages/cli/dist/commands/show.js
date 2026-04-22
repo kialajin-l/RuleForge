@@ -29,8 +29,8 @@ export async function showCommand(ruleId, options) {
             '版本': rule.meta.version,
             '描述': rule.meta.description || '无描述',
             '作者': rule.meta.authors?.join(', ') || '未知',
-            '创建时间': new Date(rule.meta.created_at).toLocaleString('zh-CN'),
-            '更新时间': new Date(rule.meta.updated_at).toLocaleString('zh-CN'),
+            '创建时间': new Date(rule.meta.created).toLocaleString('zh-CN'),
+            '更新时间': new Date(rule.meta.updated).toLocaleString('zh-CN'),
             '置信度': rule.confidence
         };
         console.log(renderKeyValueTable(basicInfo));

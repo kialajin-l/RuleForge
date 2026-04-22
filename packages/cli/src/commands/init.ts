@@ -2,14 +2,10 @@
  * init 命令：初始化 RuleForge 项目配置
  */
 
-import { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { createStepProgress } from '../utils/progress.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * 模板配置

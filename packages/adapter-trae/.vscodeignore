@@ -1,0 +1,17 @@
+.vscode/
+.vscode-test/
+src/
+tsconfig.json
+.eslintrc.json
+.gitignore
+package-lock.json
+node_modules/**/*
+**/*.map
+**/*.ts
+**/.*
+!.vscodeignore
+!dist/**/*
+!dist/extension.js
+!images/**/*
+!LICENSE
+!README.md

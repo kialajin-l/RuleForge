@@ -1,26 +1,58 @@
-﻿{
-    "version":  "0.1.0",
-    "dependencies":  {
-                         "zod":  "^3.22.4",
-                         "yaml":  "^2.4.0",
-                         "glob":  "^10.3.10",
-                         "axios":  "^1.6.8",
-                         "ignore":  "^5.3.1"
-                     },
-    "types":  "dist/index.d.ts",
-    "scripts":  {
-                    "lint":  "eslint src --ext .ts",
-                    "build":  "tsc",
-                    "dev":  "tsc --watch",
-                    "test":  "vitest"
-                },
-    "name":  "@ruleforge/core",
-    "description":  "RuleForge core engine: extract rules from dev sessions",
-    "devDependencies":  {
-                            "typescript":  "^5.3.3",
-                            "vitest":  "^1.2.2",
-                            "@types/node":  "^20.11.0",
-                            "eslint":  "^8.56.0"
-                        },
-    "main":  "dist/index.js"
+{
+  "name": "@ruleforge/core",
+  "version": "0.1.0",
+  "description": "RuleForge core engine: extract rules from dev sessions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ruleforge",
+    "rules",
+    "code-analysis",
+    "development",
+    "automation",
+    "yaml",
+    "typescript",
+    "best-practices"
+  ],
+  "author": "RuleForge Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kialajin-l/RuleForge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kialajin-l/RuleForge/issues"
+  },
+  "homepage": "https://github.com/kialajin-l/RuleForge#readme",
+  "dependencies": {
+    "zod": "^3.22.4",
+    "yaml": "^2.4.0",
+    "glob": "^10.3.10",
+    "axios": "^1.6.8",
+    "ignore": "^5.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2",
+    "@types/node": "^20.11.0",
+    "eslint": "^8.56.0",
+    "rimraf": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

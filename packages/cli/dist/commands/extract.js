@@ -56,10 +56,13 @@ export async function extractCommand(options) {
         // 处理每个日志文件
         for (let i = 0; i < logFiles.length; i++) {
             const logFile = logFiles[i];
+            if (!logFile)
+                continue;
             progressBar.update(i + 1, path.basename(logFile));
             try {
                 const sessionOptions = {
-                    logFiles: [logFile],
+                    sessionId: `session-${i}`,
+                    logPath: logFile,
                     minConfidence
                 };
                 const result = await engine.extractOnly(sessionOptions);
@@ -74,7 +77,8 @@ export async function extractCommand(options) {
                 }
             }
             catch (error) {
-                logger.warn(`处理文件失败: ${path.basename(logFile)}`, error instanceof Error ? error.message : '未知错误');
+                const fileName = logFile ? path.basename(logFile) : 'unknown';
+                logger.warn(`处理文件失败: ${fileName}`, error instanceof Error ? error.message : '未知错误');
             }
         }
         progressBar.complete();
@@ -95,13 +99,16 @@ export async function extractCommand(options) {
         logger.keyValue('成功率', `${((validRules / totalRules) * 100).toFixed(1)}%`);
         // 显示验证结果表格
         if (!json) {
-            const validationTable = renderValidationTable(validationResults.map((result, index) => ({
-                ruleId: allRules[index].meta.id,
-                valid: result.valid,
-                errors: result.errors,
-                warnings: result.warnings,
-                description: allRules[index].meta.description
-            })));
+            const validationTable = renderValidationTable(validationResults.map((result, index) => {
+                const rule = allRules[index];
+                return {
+                    ruleId: rule?.meta.id || 'unknown',
+                    valid: result.valid,
+                    errors: result.errors,
+                    warnings: result.warnings,
+                    description: rule?.meta.description || '无描述'
+                };
+            }));
             console.log(validationTable);
         }
         // 格式化规则
@@ -118,7 +125,10 @@ export async function extractCommand(options) {
             });
             saveProgress.start();
             for (let i = 0; i < formattedResults.length; i++) {
-                const { yaml, fileName } = formattedResults[i];
+                const result = formattedResults[i];
+                if (!result)
+                    continue;
+                const { yaml, fileName } = result;
                 const filePath = path.join(outputDir, fileName);
                 await fs.writeFile(filePath, yaml);
                 saveProgress.update(i + 1, fileName);
@@ -137,18 +147,21 @@ export async function extractCommand(options) {
                     successRate: (validRules / totalRules) * 100
                 },
                 files: extractionResults.map(result => ({
-                    file: path.basename(result.file),
+                    file: result.file ? path.basename(result.file) : 'unknown',
                     rules: result.rules.length,
                     statistics: result.statistics
                 })),
-                rules: allRules.map((rule, index) => ({
-                    id: rule.meta.id,
-                    name: rule.meta.name,
-                    valid: validationResults[index].valid,
-                    confidence: rule.confidence,
-                    errors: validationResults[index].errors,
-                    warnings: validationResults[index].warnings
-                }))
+                rules: allRules.map((rule, index) => {
+                    const validation = validationResults[index];
+                    return {
+                        id: rule.meta.id,
+                        name: rule.meta.name,
+                        valid: validation?.valid || false,
+                        confidence: rule.confidence,
+                        errors: validation?.errors || [],
+                        warnings: validation?.warnings || []
+                    };
+                })
             };
             console.log(JSON.stringify(jsonOutput, null, 2));
         }
@@ -158,7 +171,8 @@ export async function extractCommand(options) {
             logger.subtitle('提取统计:');
             for (const result of extractionResults) {
                 const stats = result.statistics;
-                logger.item(`${path.basename(result.file)}: ${result.rules.length} 个规则`);
+                const fileName = result.file ? path.basename(result.file) : 'unknown';
+                logger.item(`${fileName}: ${result.rules.length} 个规则`);
                 logger.keyValue('  提取时间', `${stats.extractionTime}ms`, 4);
                 logger.keyValue('  处理文件', stats.totalFiles, 4);
                 logger.keyValue('  处理命令', stats.totalCommands, 4);

@@ -2,7 +2,6 @@
  * list 命令：列出本地规则库中的所有规则
  */
 
-import { Command } from 'commander';
 import { RuleForgeEngine } from '@ruleforge/core';
 import { logger } from '../utils/logger.js';
 import { renderRulesTable, renderStatsTable } from '../utils/table.js';
@@ -108,7 +107,7 @@ export async function listCommand(options: {
       confidence: rule.confidence,
       language: rule.compatibility.languages[0],
       framework: rule.compatibility.frameworks?.[0],
-      updatedAt: rule.meta.updated_at
+      updatedAt: rule.meta.updated
     }));
     
     // 根据格式输出
@@ -135,7 +134,6 @@ export async function listCommand(options: {
     if (format === 'table') {
       logger.newline();
       
-      const stats = await engine.getRuleStatistics();
       const statsTable = renderStatsTable({
         totalRules: filteredRules.length,
         averageConfidence: filteredRules.reduce((sum, r) => sum + r.confidence, 0) / filteredRules.length,
