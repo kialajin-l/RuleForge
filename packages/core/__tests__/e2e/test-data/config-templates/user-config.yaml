@@ -1,0 +1,39 @@
+# 用户级配置模板
+# 用于测试配置优先级
+
+extraction:
+  minConfidence: 0.6
+  logPath: './user-logs'
+  applicableScenes: 2
+  maxPatterns: 100
+  
+privacy:
+  autoRedact: true
+  projectName: '{user_project}'
+  redactPatterns:
+    - pattern: '/home/user/projects'
+      replacement: '{project_name}'
+    - pattern: 'password=[^\s]+'
+      replacement: 'password=***'
+      
+storage:
+  localRulesDir: '~/.ruleforge/rules'
+  maxVersions: 5
+  autoBackup: false
+  
+output:
+  format: 'json'
+  prettyPrint: false
+  maxLineLength: 80
+  
+# 用户偏好
+user:
+  defaultFramework: 'vue'
+  preferredLanguage: 'typescript'
+  theme: 'dark'
+  
+# 通知设置
+notifications:
+  email: false
+  desktop: true
+  sound: false

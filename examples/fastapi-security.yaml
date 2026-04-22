@@ -1,0 +1,941 @@
+meta:
+  id: fastapi-jwt-authentication
+  name: FastAPI JWT Authentication
+  version: 1.0.0
+  description: "Implement secure JWT authentication in FastAPI with proper token validation and error handling"
+  authors: ["alice", "bob"]
+  license: MIT
+  tags: ["fastapi", "jwt", "authentication", "security"]
+  references: ["https://fastapi.tiangolo.com/tutorial/security/"]
+
+rule:
+  trigger:
+    keywords: ["JWT", "authentication", "bearer", "oauth2"]
+    file_pattern: "**/*.py"
+    language: "python"
+    context: "FastAPI authentication implementation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "oauth2_scheme\\s*=\\s*OAuth2PasswordBearer"
+      negated: false
+      
+    - type: "code_contains"
+      condition: "JWT token validation without proper error handling"
+      negated: false
+      
+  suggestions:
+    - description: "Implement secure JWT token validation with proper error handling"
+      code: |
+        from fastapi import Depends, HTTPException, status
+        from fastapi.security import OAuth2PasswordBearer
+        from jose import JWTError, jwt
+        from pydantic import BaseModel
+        
+        # JWT configuration
+        SECRET_KEY = "your-secret-key"
+        ALGORITHM = "HS256"
+        ACCESS_TOKEN_EXPIRE_MINUTES = 30
+        
+        oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+        
+        class TokenData(BaseModel):
+            username: str | None = None
+        
+        async def get_current_user(token: str = Depends(oauth2_scheme)):
+            credentials_exception = HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                username: str = payload.get("sub")
+                if username is None:
+                    raise credentials_exception
+                token_data = TokenData(username=username)
+            except JWTError:
+                raise credentials_exception
+            
+            user = await get_user(username=token_data.username)
+            if user is None:
+                raise credentials_exception
+            
+            return user
+      priority: "high"
+      
+    - description: "Add token expiration validation and refresh mechanism"
+      code: |
+        from datetime import datetime, timedelta
+        
+        def create_access_token(data: dict, expires_delta: timedelta | None = None):
+            to_encode = data.copy()
+            if expires_delta:
+                expire = datetime.utcnow() + expires_delta
+            else:
+                expire = datetime.utcnow() + timedelta(minutes=15)
+            
+            to_encode.update({"exp": expire})
+            encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+            return encoded_jwt
+        
+        def verify_token_expiration(token: str) -> bool:
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                expiration = datetime.fromtimestamp(payload.get("exp"))
+                return datetime.utcnow() < expiration
+            except JWTError:
+                return False
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi"]
+  min_version: "0.68.0"
+  rep_version: "^1.0"
+  dependencies:
+    fastapi: ">=0.68.0"
+    "python-jose": ">=3.3.0"
+    "python-multipart": ">=0.0.5"
+---
+meta:
+  id: fastapi-input-validation
+  name: FastAPI Input Validation
+  version: 1.0.0
+  description: "Use Pydantic models for comprehensive input validation in FastAPI endpoints"
+  authors: ["charlie"]
+  license: MIT
+  tags: ["fastapi", "validation", "pydantic", "input"]
+
+rule:
+  trigger:
+    keywords: ["def", "async def", "Depends", "Body"]
+    file_pattern: "**/*.py"
+    language: "python"
+    context: "FastAPI endpoint definition"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "def\\s+\\w+\\s*\\([^)]*\\)\\s*:"
+      negated: false
+      
+    - type: "code_pattern"
+      pattern: "pydantic\\\.\\w+"
+      negated: true
+      
+  suggestions:
+    - description: "Use Pydantic models for request body validation"
+      code: |
+        from pydantic import BaseModel, EmailStr, constr
+        from fastapi import HTTPException
+        
+        class UserCreate(BaseModel):
+            username: constr(min_length=3, max_length=50)
+            email: EmailStr
+            password: constr(min_length=8)
+            age: int = Field(..., gt=0, le=150)
+        
+        @app.post("/users/")
+        async def create_user(user: UserCreate):
+            # Input is automatically validated by FastAPI
+            # No need for manual validation
+            
+            # Check if user already exists
+            existing_user = await get_user_by_email(user.email)
+            if existing_user:
+                raise HTTPException(
+                    status_code=400,
+                    detail="User with this email already exists"
+                )
+            
+            # Create user logic...
+            return {"message": "User created successfully"}
+      priority: "high"
+      
+    - description: "Add custom validators for complex validation logic"
+      code: |
+        from pydantic import validator
+        
+        class UserCreate(BaseModel):
+            username: str
+            password: str
+            confirm_password: str
+        
+            @validator('confirm_password')
+            def passwords_match(cls, v, values):
+                if 'password' in values and v != values['password']:
+                    raise ValueError('passwords do not match')
+                return v
+            
+            @validator('password')
+            def password_strength(cls, v):
+                if len(v) < 8:
+                    raise ValueError('password must be at least 8 characters')
+                if not any(c.isupper() for c in v):
+                    raise ValueError('password must contain at least one uppercase letter')
+                if not any(c.isdigit() for c in v):
+                    raise ValueError('password must contain at least one digit')
+                return v
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi"]
+  rep_version: "^1.0"
+  dependencies:
+    pydantic: ">=1.8.0"
+---
+meta:
+  id: fastapi-sql-injection
+  name: FastAPI SQL Injection Protection
+  version: 1.0.0
+  description: "Prevent SQL injection attacks by using parameterized queries and ORM properly"
+  authors: ["david"]
+  license: MIT
+  tags: ["fastapi", "sql", "security", "injection"]
+
+rule:
+  trigger:
+    keywords: ["SELECT", "INSERT", "UPDATE", "DELETE"]
+    file_pattern: "**/*.py"
+    language: "python"
+    context: "Database query execution"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "f\\s*\"[^\"]*\\$\\{[^}]*\\}[^\"]*\""
+      negated: false
+      
+    - type: "code_pattern"
+      pattern: "\\+\\s*\\w+\\s*\\+"
+      negated: false
+      
+  suggestions:
+    - description: "Use SQLAlchemy ORM with parameterized queries"
+      code: |
+        from sqlalchemy import select
+        from sqlalchemy.orm import Session
+        
+        # Safe: Using ORM with parameters
+        def get_user_by_email(db: Session, email: str):
+            return db.execute(
+                select(User).where(User.email == email)
+            ).scalar_one_or_none()
+        
+        # Safe: Using parameterized queries with raw SQL
+        def get_users_by_role(db: Session, role: str):
+            return db.execute(
+                "SELECT * FROM users WHERE role = :role",
+                {"role": role}
+            ).fetchall()
+        
+        # UNSAFE: String concatenation (vulnerable to SQL injection)
+        def unsafe_get_user(db: Session, username: str):
+            return db.execute(f"SELECT * FROM users WHERE username = '{username}'").fetchall()
+      priority: "high"
+      
+    - description: "Use database connection pooling and connection management"
+      code: |
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        
+        # Configure database connection with connection pooling
+        DATABASE_URL = "postgresql://user:pass@localhost/dbname"
+        
+        engine = create_engine(
+            DATABASE_URL,
+            pool_size=10,
+            max_overflow=20,
+            pool_pre_ping=True,
+            pool_recycle=3600
+        )
+        
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        
+        # Dependency for database sessions
+        def get_db():
+            db = SessionLocal()
+            try:
+                yield db
+            finally:
+                db.close()
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi", "sqlalchemy"]
+  rep_version: "^1.0"
+  dependencies:
+    sqlalchemy: ">=1.4.0"
+---
+meta:
+  id: fastapi-cors-configuration
+  name: FastAPI CORS Configuration
+  version: 1.0.0
+  description: "Properly configure CORS for FastAPI applications to enable secure cross-origin requests"
+  authors: ["emma"]
+  license: MIT
+  tags: ["fastapi", "cors", "security", "configuration"]
+
+rule:
+  trigger:
+    keywords: ["CORSMiddleware", "allow_origins", "allow_methods"]
+    file_pattern: "**/*.py"
+    language: "python"
+    context: "FastAPI CORS configuration"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "allow_origins=\\s*\[\"\\*\"\]"
+      negated: false
+      
+  suggestions:
+    - description: "Configure CORS with specific allowed origins instead of wildcard"
+      code: |
+        from fastapi.middleware.cors import CORSMiddleware
+        
+        # Secure CORS configuration
+        origins = [
+            "https://yourdomain.com",
+            "https://www.yourdomain.com",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000"
+        ]
+        
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allow_headers=["*"],
+            expose_headers=["Content-Range", "X-Content-Range"],
+            max_age=600
+        )
+        
+        # UNSECURE: Wildcard origin (not recommended for production)
+        # app.add_middleware(
+        #     CORSMiddleware,
+        #     allow_origins=["*"],  # This allows ALL origins
+        #     allow_credentials=True,
+        #     allow_methods=["*"],
+        #     allow_headers=["*"],
+        # )
+      priority: "high"
+      
+    - description: "Use environment variables for CORS configuration"
+      code: |
+        import os
+        
+        # Load allowed origins from environment variables
+        ALLOWED_ORIGINS = os.getenv(
+            "ALLOWED_ORIGINS", 
+            "http://localhost:3000,http://127.0.0.1:3000"
+        ).split(",")
+        
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=ALLOWED_ORIGINS,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type"],
+        )
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi"]
+  rep_version: "^1.0"
+---
+meta:
+  id: fastapi-rate-limiting
+  name: FastAPI Rate Limiting
+  version: 1.0.0
+  description: "Implement rate limiting to protect FastAPI endpoints from abuse and DDoS attacks"
+  authors: ["frank"]
+  license: MIT
+  tags: ["fastapi", "rate-limiting", "security", "performance"]
+
+rule:
+  trigger:
+    keywords: ["limiter", "rate", "throttle", "cache"]
+    file_pattern: "**/*.py"
+    language: "python"
+    context: "API endpoint protection"
+    
+  conditions:
+    - type: "code_contains"
+      condition: "API endpoint without rate limiting"
+      negated: false
+      
+  suggestions:
+    - description: "Implement rate limiting using slowapi or similar libraries"
+      code: |
+        from slowapi import Limiter, _rate_limit_exceeded_handler
+        from slowapi.util import get_remote_address
+        from slowapi.errors import RateLimitExceeded
+        from fastapi import FastAPI, Request
+        
+        limiter = Limiter(key_func=get_remote_address)
+        app = FastAPI()
+        app.state.limiter = limiter
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+        
+        @app.get("/public/")
+        @limiter.limit("100/minute")
+        async def public_endpoint(request: Request):
+            return {"message": "Public endpoint"}
+        
+        @app.get("/sensitive/")
+        @limiter.limit("10/minute")
+        async def sensitive_endpoint(request: Request):
+            return {"message": "Sensitive endpoint"}
+        
+        @app.post("/auth/")
+        @limiter.limit("5/minute")
+        async def auth_endpoint(request: Request):
+            return {"message": "Authentication endpoint"}
+      priority: "high"
+      
+    - description: "Implement IP-based rate limiting with Redis for distributed systems"
+      code: |
+        import redis
+        from fastapi import FastAPI, Request, HTTPException
+        
+        redis_client = redis.Redis(host='localhost', port=6379, db=0)
+        
+        async def rate_limit(request: Request, key: str, limit: int, window: int):
+            """Custom rate limiting implementation"""
+            ip = request.client.host
+            redis_key = f"rate_limit:{key}:{ip}"
+            
+            current = redis_client.get(redis_key)
+            if current and int(current) >= limit:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Rate limit exceeded"
+                )
+            
+            pipe = redis_client.pipeline()
+            pipe.incr(redis_key)
+            pipe.expire(redis_key, window)
+            pipe.execute()
+        
+        @app.get("/api/data/")
+        async def get_data(request: Request):
+            await rate_limit(request, "get_data", 100, 60)  # 100 requests per minute
+            return {"data": "your data here"}
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi"]
+  rep_version: "^1.0"
+  dependencies:
+    slowapi: ">=0.1.0"
+    redis: ">=4.0.0"
+---
+meta:
+  id: fastapi-error-handling
+  name: FastAPI Error Handling
+  version: 1.0.0
+  description: "Implement comprehensive error handling in FastAPI with proper HTTP status codes and logging"
+  authors: ["grace"]
+  license: MIT
+  tags: ["fastapi", "error-handling", "logging", "reliability"]
+
+rule:
+  trigger:
+    keywords: ["try", "except", "HTTPException", "raise"]
+    file_pattern: "**/*.py"
+    language: "python"
+    context: "Error handling in FastAPI"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "except\\s*:"
+      negated: false
+      
+  suggestions:
+    - description: "Use specific exception handling with proper HTTP status codes"
+      code: |
+        from fastapi import HTTPException, status
+        from sqlalchemy.exc import SQLAlchemyError
+        
+        @app.post("/users/")
+        async def create_user(user_data: UserCreate):
+            try:
+                # Database operation
+                user = await create_user_in_db(user_data)
+                return user
+                
+            except ValueError as e:
+                # Input validation error
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(e)
+                )
+                
+            except SQLAlchemyError as e:
+                # Database error
+                logger.error(f"Database error: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Internal server error"
+                )
+                
+            except Exception as e:
+                # Generic error (should be logged)
+                logger.error(f"Unexpected error: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Internal server error"
+                )
+      priority: "high"
+      
+    - description: "Create custom exception handlers for consistent error responses"
+      code: |
+        from fastapi import FastAPI, Request
+        from fastapi.responses import JSONResponse
+        
+        class CustomException(Exception):
+            def __init__(self, message: str, code: str = "CUSTOM_ERROR"):
+                self.message = message
+                self.code = code
+        
+        @app.exception_handler(CustomException)
+        async def custom_exception_handler(request: Request, exc: CustomException):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": exc.code,
+                        "message": exc.message,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                }
+            )
+        
+        @app.get("/test/")
+        async def test_endpoint():
+            raise CustomException("Something went wrong", "TEST_ERROR")
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi"]
+  rep_version: "^1.0"
+---
+meta:
+  id: fastapi-dependency-injection
+  name: FastAPI Dependency Injection
+  version: 1.0.0
+  description: "Properly use FastAPI's dependency injection system for clean and testable code"
+  authors: ["henry"]
+  license: MIT
+  tags: ["fastapi", "dependency-injection", "testing", "architecture"]
+
+rule:
+  trigger:
+    keywords: ["Depends", "def", "async def"]
+    file_pattern: "**/*.py"
+    language: "python"
+    context: "FastAPI dependency usage"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "def\\s+\\w+\\s*\\([^)]*Depends[^)]*\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use dependency injection for database sessions and service layers"
+      code: |
+        from fastapi import Depends
+        from sqlalchemy.orm import Session
+        
+        # Database dependency
+        def get_db():
+            db = SessionLocal()
+            try:
+                yield db
+            finally:
+                db.close()
+        
+        # Service dependency
+        def get_user_service(db: Session = Depends(get_db)):
+            return UserService(db)
+        
+        @app.get("/users/{user_id}")
+        async def get_user(
+            user_id: int,
+            user_service: UserService = Depends(get_user_service)
+        ):
+            user = user_service.get_by_id(user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+            return user
+        
+        # Class-based dependency
+        class PaginationParams:
+            def __init__(self, page: int = 1, limit: int = 100):
+                self.page = max(1, page)
+                self.limit = min(100, limit)
+                self.offset = (self.page - 1) * self.limit
+        
+        @app.get("/users/")
+        async def get_users(pagination: PaginationParams = Depends()):
+            return await get_users_from_db(
+                offset=pagination.offset,
+                limit=pagination.limit
+            )
+      priority: "high"
+      
+    - description: "Create reusable dependency chains for complex scenarios"
+      code: |
+        from fastapi import Depends, HTTPException, status
+        
+        async def get_current_user(token: str = Depends(oauth2_scheme)):
+            # Authentication logic
+            return user
+        
+        async def get_current_active_user(
+            current_user: User = Depends(get_current_user)
+        ):
+            if not current_user.is_active:
+                raise HTTPException(status_code=400, detail="Inactive user")
+            return current_user
+        
+        async def get_current_admin_user(
+            current_user: User = Depends(get_current_active_user)
+        ):
+            if not current_user.is_admin:
+                raise HTTPException(status_code=403, detail="Not enough permissions")
+            return current_user
+        
+        @app.get("/admin/")
+        async def admin_dashboard(admin: User = Depends(get_current_admin_user)):
+            return {"message": "Welcome admin"}
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi"]
+  rep_version: "^1.0"
+---
+meta:
+  id: fastapi-background-tasks
+  name: FastAPI Background Tasks
+  version: 1.0.0
+  description: "Use background tasks for long-running operations to improve API response times"
+  authors: ["isabella"]
+  license: MIT
+  tags: ["fastapi", "background-tasks", "performance", "async"]
+
+rule:
+  trigger:
+    keywords: ["BackgroundTasks", "task", "async", "await"]
+    file_pattern: "**/*.py"
+    language: "python"
+    context: "Background task implementation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "def\\s+\\w+\\s*\\([^)]*\\).*time\\.sleep"
+      negated: false
+      
+  suggestions:
+    - description: "Use BackgroundTasks for non-blocking long-running operations"
+      code: |
+        from fastapi import BackgroundTasks
+        
+        def send_email_notification(email: str, message: str):
+            # Simulate email sending
+            time.sleep(2)
+            print(f"Email sent to {email}: {message}")
+        
+        def update_user_statistics(user_id: int):
+            # Update user statistics in background
+            time.sleep(1)
+            print(f"Statistics updated for user {user_id}")
+        
+        @app.post("/users/")
+        async def create_user(
+            user: UserCreate,
+            background_tasks: BackgroundTasks
+        ):
+            # Create user immediately
+            new_user = await create_user_in_db(user)
+            
+            # Add background tasks
+            background_tasks.add_task(
+                send_email_notification, 
+                user.email, 
+                "Welcome to our service!"
+            )
+            background_tasks.add_task(
+                update_user_statistics, 
+                new_user.id
+            )
+            
+            return {"message": "User created", "user_id": new_user.id}
+      priority: "high"
+      
+    - description: "Use Celery for complex background task processing"
+      code: |
+        from celery import Celery
+        
+        # Celery configuration
+        celery_app = Celery(
+            'tasks',
+            broker='redis://localhost:6379/0',
+            backend='redis://localhost:6379/0'
+        )
+        
+        @celery_app.task
+        def process_large_file(file_path: str):
+            # Process large file asynchronously
+            # This can take minutes or hours
+            result = heavy_processing(file_path)
+            return result
+        
+        @app.post("/upload/")
+        async def upload_file(file: UploadFile):
+            # Save file
+            file_path = f"/tmp/{file.filename}"
+            with open(file_path, "wb") as f:
+                f.write(await file.read())
+            
+            # Start background processing
+            task = process_large_file.delay(file_path)
+            
+            return {"task_id": task.id, "status": "processing"}
+        
+        @app.get("/task/{task_id}")
+        async def get_task_status(task_id: str):
+            task = process_large_file.AsyncResult(task_id)
+            return {
+                "task_id": task_id,
+                "status": task.status,
+                "result": task.result if task.ready() else None
+            }
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi"]
+  rep_version: "^1.0"
+  dependencies:
+    celery: ">=5.0.0"
+    redis: ">=4.0.0"
+---
+meta:
+  id: fastapi-logging
+  name: FastAPI Logging Configuration
+  version: 1.0.0
+  description: "Implement comprehensive logging in FastAPI applications for monitoring and debugging"
+  authors: ["jack"]
+  license: MIT
+  tags: ["fastapi", "logging", "monitoring", "debugging"]
+
+rule:
+  trigger:
+    keywords: ["logging", "logger", "log", "print"]
+    file_pattern: "**/*.py"
+    language: "python"
+    context: "Logging implementation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "print\\([^)]*\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use Python's logging module with proper configuration"
+      code: |
+        import logging
+        import sys
+        from logging.handlers import RotatingFileHandler
+        
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                RotatingFileHandler('app.log', maxBytes=1000000, backupCount=5),
+                logging.StreamHandler(sys.stdout)
+            ]
+        )
+        
+        logger = logging.getLogger(__name__)
+        
+        @app.middleware("http")
+        async def log_requests(request: Request, call_next):
+            logger.info(f"Request: {request.method} {request.url}")
+            
+            response = await call_next(request)
+            
+            logger.info(f"Response: {response.status_code}")
+            return response
+        
+        @app.get("/users/{user_id}")
+        async def get_user(user_id: int):
+            logger.info(f"Fetching user {user_id}")
+            
+            try:
+                user = await get_user_from_db(user_id)
+                logger.info(f"User {user_id} found")
+                return user
+            except Exception as e:
+                logger.error(f"Error fetching user {user_id}: {e}")
+                raise HTTPException(status_code=404, detail="User not found")
+      priority: "high"
+      
+    - description: "Implement structured logging with JSON format for production"
+      code: |
+        import json
+        from pythonjsonlogger import jsonlogger
+        
+        # JSON formatter for structured logging
+        formatter = jsonlogger.JsonFormatter(
+            '%(asctime)s %(name)s %(levelname)s %(message)s'
+        )
+        
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        
+        logger = logging.getLogger()
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        
+        # Structured logging example
+        logger.info("User action", extra={
+            "user_id": 123,
+            "action": "login",
+            "ip_address": "192.168.1.1",
+            "user_agent": "Mozilla/5.0..."
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi"]
+  rep_version: "^1.0"
+  dependencies:
+    "python-json-logger": ">=2.0.0"
+---
+meta:
+  id: fastapi-testing
+  name: FastAPI Testing Patterns
+  version: 1.0.0
+  description: "Write comprehensive tests for FastAPI applications using pytest and TestClient"
+  authors: ["karen"]
+  license: MIT
+  tags: ["fastapi", "testing", "pytest", "quality"]
+
+rule:
+  trigger:
+    keywords: ["test", "def test", "pytest", "TestClient"]
+    file_pattern: "**/test_*.py"
+    language: "python"
+    context: "FastAPI test implementation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "def\\s+test_\\w+\\s*\\([^)]*\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Write comprehensive API endpoint tests with authentication"
+      code: |
+        import pytest
+        from fastapi.testclient import TestClient
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        
+        from main import app, get_db
+        from database import Base
+        
+        # Test database
+        SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+        engine = create_engine(
+            SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+        )
+        TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        
+        # Dependency override
+        def override_get_db():
+            try:
+                db = TestingSessionLocal()
+                yield db
+            finally:
+                db.close()
+        
+        app.dependency_overrides[get_db] = override_get_db
+        
+        client = TestClient(app)
+        
+        @pytest.fixture(scope="function")
+        def test_db():
+            Base.metadata.create_all(bind=engine)
+            yield
+            Base.metadata.drop_all(bind=engine)
+        
+        def test_create_user(test_db):
+            response = client.post(
+                "/users/",
+                json={"email": "test@example.com", "password": "secret"}
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert "id" in data
+            assert data["email"] == "test@example.com"
+        
+        def test_create_user_invalid_email(test_db):
+            response = client.post(
+                "/users/",
+                json={"email": "invalid-email", "password": "secret"}
+            )
+            assert response.status_code == 422  # Validation error
+      priority: "high"
+      
+    - description: "Mock external dependencies for isolated unit testing"
+      code: |
+        from unittest.mock import Mock, patch
+        
+        def test_user_service_with_mocks():
+            # Mock database session
+            mock_db = Mock()
+            
+            # Mock query result
+            mock_user = Mock()
+            mock_user.id = 1
+            mock_user.email = "test@example.com"
+            
+            mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+            
+            # Test service with mock
+            user_service = UserService(mock_db)
+            result = user_service.get_by_id(1)
+            
+            assert result.id == 1
+            assert result.email == "test@example.com"
+            mock_db.query.assert_called_once()
+        
+        @patch('main.send_email')
+        def test_email_notification(mock_send_email):
+            # Mock email sending
+            mock_send_email.return_value = True
+            
+            response = client.post("/notify/", json={"email": "test@example.com"})
+            
+            assert response.status_code == 200
+            mock_send_email.assert_called_once_with("test@example.com")
+      priority: "medium"
+
+compatibility:
+  languages: ["python"]
+  frameworks: ["fastapi"]
+  rep_version: "^1.0"
+  dependencies:
+    pytest: ">=7.0.0"
+    pytest-asyncio: ">=0.20.0"

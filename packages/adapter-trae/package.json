@@ -1,0 +1,52 @@
+﻿{
+    "contributes":  {
+                        "configuration":  {
+                                              "properties":  {
+                                                                 "ruleforge.autoTrigger":  {
+                                                                                               "description":  "Automatically suggest rule extraction on session end",
+                                                                                               "default":  true,
+                                                                                               "type":  "boolean"
+                                                                                           },
+                                                                 "ruleforge.defaultRepo":  {
+                                                                                               "description":  "Default GitHub repo for rule contributions",
+                                                                                               "default":  "multiagent/rules",
+                                                                                               "type":  "string"
+                                                                                           }
+                                                             },
+                                              "title":  "RuleForge"
+                                          },
+                        "commands":  [
+                                         {
+                                             "command":  "ruleforge.extract",
+                                             "title":  "RuleForge: Extract Rules from Session"
+                                         }
+                                     ]
+                    },
+    "scripts":  {
+                    "package":  "vsce package",
+                    "build":  "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+                    "watch":  "npm run build -- --watch"
+                },
+    "description":  "Extract and share coding rules from your Trae sessions",
+    "version":  "0.1.0",
+    "activationEvents":  [
+                             "onLanguage",
+                             "onCommand:ruleforge.extract"
+                         ],
+    "engines":  {
+                    "trae":  "^1.0.0",
+                    "vscode":  "^1.85.0"
+                },
+    "name":  "@ruleforge/adapter-trae",
+    "main":  "./dist/extension.js",
+    "publisher":  "ruleforge",
+    "categories":  [
+                       "Other"
+                   ],
+    "devDependencies":  {
+                            "@types/vscode":  "^1.85.0",
+                            "esbuild":  "^0.20.0",
+                            "@ruleforge/core":  "file:../core"
+                        },
+    "displayName":  "RuleForge for Trae"
+}

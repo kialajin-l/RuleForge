@@ -1,0 +1,37 @@
+meta:
+  id: vue-props-validation
+  name: Vue Props Validation
+  version: 1.0.0
+  description: Validate props use TypeScript interface
+  authors: ["test-author"]
+  license: MIT
+  created: "2024-01-15T10:00:00Z"
+  updated: "2024-01-15T10:00:00Z"
+rule:
+  trigger:
+    type: file_pattern
+    pattern: "**/*.vue"
+    file_types: ["vue", "typescript"]
+    context: "Vue component props definition"
+  conditions:
+    - type: code_contains
+      condition: "defineProps without interface"
+      negated: false
+    - type: code_contains
+      condition: "props defined as object literal"
+      negated: false
+  suggestions:
+    - description: Use TypeScript interface for props
+      code: |
+        interface Props {
+          title: string
+          count?: number
+        }
+        
+        const props = defineProps<Props>()
+compatibility:
+  languages: ["typescript", "vue"]
+  frameworks: ["vue"]
+  min_version: "3.4.0"
+  max_version: "4.0.0"
+confidence: 0.92

@@ -1,0 +1,37 @@
+# 默认配置模板
+# 用于测试配置回退机制
+
+extraction:
+  minConfidence: 0.7
+  logPath: '.ruleforge/logs'
+  applicableScenes: 2
+  maxPatterns: 20
+  
+privacy:
+  autoRedact: true
+  projectName: '{project_name}'
+  redactPatterns:
+    - pattern: '/path/to/project'
+      replacement: '{project_name}'
+    - pattern: 'api_key=[^\s]+'
+      replacement: 'api_key=***'
+      
+storage:
+  localRulesDir: '.ruleforge/rules'
+  maxVersions: 10
+  autoBackup: true
+  
+output:
+  format: 'yaml'
+  prettyPrint: true
+  maxLineLength: 120
+  
+# 基本设置
+basic:
+  language: 'typescript'
+  framework: 'auto'
+  
+# 性能设置
+performance:
+  maxMemoryMB: 256
+  timeoutSeconds: 60

@@ -1,0 +1,35 @@
+# 项目级配置模板
+# 用于测试配置优先级
+
+extraction:
+  minConfidence: 0.8
+  logPath: './project-logs'
+  applicableScenes: 3
+  maxPatterns: 50
+  
+privacy:
+  autoRedact: true
+  projectName: 'test-project'
+  redactPatterns:
+    - pattern: '/Users/dev/my-project'
+      replacement: '{project_name}'
+    - pattern: 'sk-[a-zA-Z0-9]{20,}'
+      replacement: '{api_key}'
+      
+storage:
+  localRulesDir: '.ruleforge/rules'
+  maxVersions: 10
+  autoBackup: true
+  
+output:
+  format: 'yaml'
+  prettyPrint: true
+  maxLineLength: 100
+  
+# 高级配置
+advanced:
+  enableDebug: false
+  logLevel: 'info'
+  performance:
+    maxMemoryMB: 512
+    timeoutSeconds: 30

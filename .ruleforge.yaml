@@ -1,0 +1,60 @@
+# RuleForge 项目配置
+# 用于指导 RuleForge 自身的规则提取和贡献
+
+meta:
+  id: "ruleforge-dev-practices"
+  name: "RuleForge 开发规范"
+  version: "0.1.0"
+  description: "RuleForge 项目自身的开发最佳实践"
+
+project:
+  type: "monorepo"
+  package_manager: "npm"
+  workspaces:
+    - "packages/core"
+    - "packages/adapter-trae"
+    - "packages/cli"
+
+rules:
+  # 代码规范
+  - id: "typescript-strict-mode"
+    description: "所有 TypeScript 文件必须启用严格模式"
+    files: "**/*.ts"
+    check: "tsconfig.json 中 strict: true"
+    
+  - id: "error-handling-required"
+    description: "所有异步操作必须包含错误处理"
+    files: "packages/**/*.ts"
+    check: "try-catch 或 .catch() 存在"
+    
+  - id: "jsdoc-required"
+    description: "所有公共 API 必须有 JSDoc 注释"
+    files: "packages/core/src/**/*.ts"
+    check: "/** */ 注释块存在"
+
+  # 提交规范
+  - id: "commit-message-format"
+    description: "提交信息遵循 Conventional Commits"
+    pattern: "^(feat|fix|docs|style|refactor|test|chore): .+"
+    
+  # 测试规范
+  - id: "test-coverage-minimum"
+    description: "核心模块测试覆盖率 ≥ 80%"
+    files: "packages/core/src/**/*.ts"
+    check: "__tests__ 目录存在 + vitest 通过"
+
+contribution:
+  enabled: true
+  auto_trigger: true
+  min_confidence: 0.8
+  default_repo: "multiagent/rules"
+  categories:
+    - "typescript-best-practices"
+    - "vscode-extension-development"
+    - "ai-rule-extraction"
+
+development:
+  daily_goals: true
+  prompt_driven: true
+  test_first: false  # MVP 期先实现后测试
+  dry_run_default: true

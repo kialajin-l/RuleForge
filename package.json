@@ -1,0 +1,21 @@
+﻿{
+    "version":  "0.1.0",
+    "name":  "ruleforge-monorepo",
+    "scripts":  {
+                    "lint":  "npm run lint --workspaces --if-present",
+                    "build":  "npm run build --workspaces",
+                    "package:cli":  "cd packages/cli \u0026\u0026 npm run package",
+                    "test":  "npm run test --workspaces --if-present",
+                    "package:plugin":  "cd packages/adapter-trae \u0026\u0026 npm run package",
+                    "dev":  "npm run dev --workspaces --if-present"
+                },
+    "devDependencies":  {
+                            "concurrently":  "^8.2.2",
+                            "@typescript-eslint/eslint-plugin":  "^7.0.0",
+                            "@typescript-eslint/parser":  "^7.0.0"
+                        },
+    "workspaces":  [
+                       "packages/*"
+                   ],
+    "private":  true
+}

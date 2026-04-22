@@ -1,0 +1,166 @@
+{
+  "events": [
+    {
+      "type": "file_saved",
+      "timestamp": "2024-01-20T10:00:00Z",
+      "file": "/src/components/UserProfile.vue",
+      "language": "vue",
+      "content": "<template>\n  <div class=\"user-profile\">\n    <img :src=\"user.avatar\" alt=\"Avatar\" />\n    <h2>{{ user.name }}</h2>\n    <p>{{ user.email }}</p>\n    <button @click=\"editProfile\">Edit</button>\n  </div>\n</template>",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "file_saved",
+      "timestamp": "2024-01-20T10:15:00Z",
+      "file": "/src/components/LoginForm.vue",
+      "language": "vue",
+      "content": "<template>\n  <form @submit.prevent=\"handleSubmit\">\n    <input v-model=\"form.email\" type=\"email\" placeholder=\"Email\" />\n    <input v-model=\"form.password\" type=\"password\" placeholder=\"Password\" />\n    <button type=\"submit\" :disabled=\"loading\">\n      {{ loading ? 'Logging in...' : 'Login' }}\n    </button>\n  </form>\n</template>",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "file_saved",
+      "timestamp": "2024-01-20T10:30:00Z",
+      "file": "/src/services/user-service.ts",
+      "language": "typescript",
+      "content": "export class UserService {\n  async getUser(id: number): Promise<User> {\n    const response = await fetch(`/api/users/${id}`)\n    return response.json()\n  }\n}",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "error_occurred",
+      "timestamp": "2024-01-20T10:45:00Z",
+      "error": "TypeError: Cannot read property 'name' of undefined",
+      "file": "/src/components/UserProfile.vue",
+      "line": 3,
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "error_fixed",
+      "timestamp": "2024-01-20T10:50:00Z",
+      "error": "TypeError: Cannot read property 'name' of undefined",
+      "fix": "Added null check for user object",
+      "file": "/src/components/UserProfile.vue",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "file_saved",
+      "timestamp": "2024-01-20T11:00:00Z",
+      "file": "/src/components/UserProfile.vue",
+      "language": "vue",
+      "content": "<template>\n  <div class=\"user-profile\">\n    <img v-if=\"user.avatar\" :src=\"user.avatar\" alt=\"Avatar\" />\n    <h2 v-if=\"user.name\">{{ user.name }}</h2>\n    <p v-if=\"user.email\">{{ user.email }}</p>\n    <button @click=\"editProfile\">Edit</button>\n  </div>\n</template>",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "test_run",
+      "timestamp": "2024-01-20T11:15:00Z",
+      "testFile": "/tests/user-service.test.ts",
+      "passed": true,
+      "failed": false,
+      "duration": 1200,
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "file_saved",
+      "timestamp": "2024-01-20T11:30:00Z",
+      "file": "/src/components/Dashboard.vue",
+      "language": "vue",
+      "content": "<template>\n  <div class=\"dashboard\">\n    <header>\n      <h1>Dashboard</h1>\n      <nav>\n        <router-link to=\"/profile\">Profile</router-link>\n        <router-link to=\"/settings\">Settings</router-link>\n      </nav>\n    </header>\n    <main>\n      <slot />\n    </main>\n  </div>\n</template>",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "error_occurred",
+      "timestamp": "2024-01-20T11:45:00Z",
+      "error": "Error: Maximum call stack size exceeded",
+      "file": "/src/utils.ts",
+      "line": 15,
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "error_fixed",
+      "timestamp": "2024-01-20T11:50:00Z",
+      "error": "Error: Maximum call stack size exceeded",
+      "fix": "Fixed recursive function call",
+      "file": "/src/utils.ts",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "file_saved",
+      "timestamp": "2024-01-20T12:00:00Z",
+      "file": "/src/utils.ts",
+      "language": "typescript",
+      "content": "export function debounce<T extends (...args: any[]) => any>(\n  func: T,\n  wait: number\n): T {\n  let timeout: NodeJS.Timeout\n  return ((...args: any[]) => {\n    clearTimeout(timeout)\n    timeout = setTimeout(() => func(...args), wait)\n  }) as T\n}",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "test_run",
+      "timestamp": "2024-01-20T12:15:00Z",
+      "testFile": "/tests/utils.test.ts",
+      "passed": true,
+      "failed": false,
+      "duration": 800,
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "file_saved",
+      "timestamp": "2024-01-20T12:30:00Z",
+      "file": "/src/components/DataTable.vue",
+      "language": "vue",
+      "content": "<template>\n  <table>\n    <thead>\n      <tr>\n        <th v-for=\"column in columns\" :key=\"column.key\">\n          {{ column.title }}\n        </th>\n      </tr>\n    </thead>\n    <tbody>\n      <tr v-for=\"item in data\" :key=\"item.id\">\n        <td v-for=\"column in columns\" :key=\"column.key\">\n          {{ item[column.key] }}\n        </td>\n      </tr>\n    </tbody>\n  </table>\n</template>",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "error_occurred",
+      "timestamp": "2024-01-20T12:45:00Z",
+      "error": "TypeError: props.user is not iterable",
+      "file": "/src/components/DataTable.vue",
+      "line": 10,
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "error_fixed",
+      "timestamp": "2024-01-20T12:50:00Z",
+      "error": "TypeError: props.user is not iterable",
+      "fix": "Added Array.isArray check before iteration",
+      "file": "/src/components/DataTable.vue",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "file_saved",
+      "timestamp": "2024-01-20T13:00:00Z",
+      "file": "/src/components/DataTable.vue",
+      "language": "vue",
+      "content": "<template>\n  <table>\n    <thead>\n      <tr>\n        <th v-for=\"column in columns\" :key=\"column.key\">\n          {{ column.title }}\n        </th>\n      </tr>\n    </thead>\n    <tbody>\n      <tr v-for=\"item in Array.isArray(data) ? data : []\" :key=\"item.id\">\n        <td v-for=\"column in columns\" :key=\"column.key\">\n          {{ item[column.key] }}\n        </td>\n      </tr>\n    </tbody>\n  </table>\n</template>",
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "test_run",
+      "timestamp": "2024-01-20T13:15:00Z",
+      "testFile": "/tests/components.test.ts",
+      "passed": true,
+      "failed": false,
+      "duration": 1500,
+      "sessionId": "demo-session"
+    },
+    {
+      "type": "git_commit",
+      "timestamp": "2024-01-20T13:30:00Z",
+      "message": "feat: Add user profile and dashboard components",
+      "files": [
+        "/src/components/UserProfile.vue",
+        "/src/components/Dashboard.vue",
+        "/src/components/DataTable.vue"
+      ],
+      "sessionId": "demo-session"
+    }
+  ],
+  "stats": {
+    "fileSaved": 6,
+    "errorFixed": 3,
+    "testRun": 3,
+    "commandExecuted": 1,
+    "totalEvents": 17
+  },
+  "metadata": {
+    "generatedAt": "2024-01-22T10:00:00Z",
+    "version": "1.0.0",
+    "description": "RuleForge 演示数据 - 模拟真实 Vue.js 开发会话"
+  }
+}

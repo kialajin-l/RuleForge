@@ -1,0 +1,26 @@
+﻿{
+    "version":  "0.1.0",
+    "dependencies":  {
+                         "zod":  "^3.22.4",
+                         "yaml":  "^2.4.0",
+                         "glob":  "^10.3.10",
+                         "axios":  "^1.6.8",
+                         "ignore":  "^5.3.1"
+                     },
+    "types":  "dist/index.d.ts",
+    "scripts":  {
+                    "lint":  "eslint src --ext .ts",
+                    "build":  "tsc",
+                    "dev":  "tsc --watch",
+                    "test":  "vitest"
+                },
+    "name":  "@ruleforge/core",
+    "description":  "RuleForge core engine: extract rules from dev sessions",
+    "devDependencies":  {
+                            "typescript":  "^5.3.3",
+                            "vitest":  "^1.2.2",
+                            "@types/node":  "^20.11.0",
+                            "eslint":  "^8.56.0"
+                        },
+    "main":  "dist/index.js"
+}

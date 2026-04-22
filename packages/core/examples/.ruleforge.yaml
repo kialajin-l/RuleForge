@@ -1,0 +1,95 @@
+# RuleForge 配置文件示例
+# 生成时间: 2026-04-22T10:00:00.000Z
+# 文档: https://ruleforge.dev/docs/configuration
+
+# 规则提取配置
+extraction:
+  # 最小置信度阈值 (0.0 - 1.0)
+  minConfidence: 0.7
+  
+  # 最少适用场景数
+  applicableScenes: 2
+  
+  # 日志文件路径
+  logPath: ".ruleforge/logs"
+  
+  # 重点关注的语言
+  languageFocus:
+    - "typescript"
+    - "javascript"
+    - "vue"
+    - "python"
+    - "java"
+  
+  # 最大文件大小 (字节)
+  maxFileSize: 10485760
+
+# 隐私和脱敏配置
+privacy:
+  # 是否自动脱敏敏感信息
+  autoRedact: true
+  
+  # 允许不脱敏的模式 (正则表达式)
+  allowedPatterns:
+    - "test.*"
+    - "example.*"
+    - "demo.*"
+  
+  # 项目名称 (用于占位符替换)
+  projectName: "{project_name}"
+  
+  # 是否脱敏 API 密钥
+  redactApiKeys: true
+  
+  # 是否脱敏文件路径
+  redactPaths: true
+
+# 存储配置
+storage:
+  # 本地规则存储目录
+  localRulesDir: ".ruleforge/rules"
+  
+  # 是否启用缓存
+  cacheEnabled: true
+  
+  # 缓存生存时间 (秒)
+  cacheTTL: 7200
+  
+  # 最大版本保留数
+  maxVersions: 10
+  
+  # 是否启用备份
+  backupEnabled: true
+
+# 输出配置
+output:
+  # 输出格式 (yaml | json)
+  format: "yaml"
+  
+  # 是否美化输出
+  prettyPrint: true
+  
+  # 是否包含注释
+  includeComments: true
+  
+  # 是否验证输出
+  validateOutput: true
+  
+  # 是否生成报告
+  generateReport: true
+
+# GitHub 集成配置 (可选)
+github:
+  # 是否启用 GitHub 集成
+  enabled: false
+  
+  # 是否自动创建 PR
+  autoCreatePR: false
+  
+  # 基础分支
+  baseBranch: "main"
+  
+  # PR 标签
+  labels:
+    - "ruleforge"
+    - "auto-generated"

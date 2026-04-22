@@ -1,0 +1,750 @@
+meta:
+  id: vue3-props-validation
+  name: Vue 3 Props Validation
+  version: 1.0.0
+  description: "Use TypeScript interfaces for Vue 3 props validation instead of object literals for better type safety and IntelliSense support"
+  authors: ["alice", "bob"]
+  license: MIT
+  created: "2024-01-15T10:00:00Z"
+  updated: "2024-01-20T15:30:00Z"
+  tags: ["vue3", "typescript", "props", "validation", "type-safety"]
+  references: ["https://vuejs.org/guide/typescript/composition-api.html"]
+
+rule:
+  trigger:
+    keywords: ["defineProps", "props", "withDefaults"]
+    file_pattern: "**/*.vue"
+    language: "typescript"
+    context: "Vue 3 component props definition"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "defineProps\\(\\{[^}]*\\}\\)"
+      negated: false
+      
+    - type: "code_contains"
+      condition: "defineProps without TypeScript interface"
+      negated: false
+      
+  suggestions:
+    - description: "Use TypeScript interface for props with full type safety"
+      code: |
+        interface Props {
+          title: string
+          count?: number
+          disabled?: boolean
+          items?: Array<{ id: number; name: string }>
+        }
+        
+        const props = defineProps<Props>()
+      priority: "high"
+      
+    - description: "Add JSDoc comments for better documentation and IntelliSense"
+      code: |
+        /**
+         * Component props interface
+         * @property {string} title - The title of the component
+         * @property {number} [count] - Optional count value
+         * @property {boolean} [disabled] - Whether the component is disabled
+         * @property {Array<{id: number, name: string}>} [items] - Optional items array
+         */
+        interface Props {
+          title: string
+          count?: number
+          disabled?: boolean
+          items?: Array<{ id: number; name: string }>
+        }
+        
+        const props = defineProps<Props>()
+      priority: "medium"
+      
+    - description: "Use withDefaults for default values with TypeScript interface"
+      code: |
+        interface Props {
+          title: string
+          count?: number
+          disabled?: boolean
+        }
+        
+        const props = withDefaults(defineProps<Props>(), {
+          count: 0,
+          disabled: false
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "vue"]
+  frameworks: ["vue"]
+  min_version: "3.3.0"
+  max_version: "4.0.0"
+  rep_version: "^1.0"
+  dependencies:
+    vue: ">=3.3"
+  environments: ["browser"]
+---
+meta:
+  id: vue3-composables-naming
+  name: Vue 3 Composables Naming Convention
+  version: 1.0.0
+  description: "Follow Vue 3 composable function naming convention (useXxx) for better code organization and discoverability"
+  authors: ["charlie"]
+  license: MIT
+  tags: ["vue3", "composables", "naming", "convention"]
+
+rule:
+  trigger:
+    keywords: ["function", "const", "export"]
+    file_pattern: "**/*.ts"
+    language: "typescript"
+    context: "Vue 3 composable function definition"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "export\\s+(?:function|const)\\s+[a-z][a-zA-Z]*"
+      negated: false
+      
+    - type: "code_pattern"
+      pattern: "export\\s+(?:function|const)\\s+use[A-Z][a-zA-Z]*"
+      negated: true
+      
+  suggestions:
+    - description: "Rename composable function to follow useXxx naming convention"
+      code: |
+        // Before
+        export function fetchData() {
+          // implementation
+        }
+        
+        // After
+        export function useFetchData() {
+          // implementation
+        }
+      priority: "high"
+      
+    - description: "Add proper TypeScript types to composable function"
+      code: |
+        interface UseFetchDataReturn {
+          data: Ref<any>
+          loading: Ref<boolean>
+          error: Ref<Error | null>
+          execute: () => Promise<void>
+        }
+        
+        export function useFetchData(url: string): UseFetchDataReturn {
+          const data = ref(null)
+          const loading = ref(false)
+          const error = ref<Error | null>(null)
+          
+          async function execute() {
+            // implementation
+          }
+          
+          return { data, loading, error, execute }
+        }
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript"]
+  frameworks: ["vue"]
+  rep_version: "^1.0"
+---
+meta:
+  id: vue3-reactive-data
+  name: Vue 3 Reactive Data Best Practices
+  version: 1.0.0
+  description: "Use ref() for primitive values and reactive() for objects in Vue 3 composition API"
+  authors: ["david"]
+  license: MIT
+  tags: ["vue3", "reactive", "ref", "composition-api"]
+
+rule:
+  trigger:
+    keywords: ["reactive", "ref", "computed"]
+    file_pattern: "**/*.vue"
+    language: "typescript"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "reactive\\(\\s*[0-9]+\\s*\\)"
+      negated: false
+      
+    - type: "code_pattern"
+      pattern: "ref\\(\\s*\\{[^}]*\\}\\s*\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use ref() for primitive values instead of reactive()"
+      code: |
+        // Before
+        const count = reactive(0)
+        
+        // After
+        const count = ref(0)
+      priority: "high"
+      
+    - description: "Use reactive() for objects and ref() for primitives"
+      code: |
+        // Correct usage
+        const user = reactive({
+          name: 'John',
+          age: 30
+        })
+        
+        const count = ref(0)
+        const message = ref('Hello')
+      priority: "medium"
+      
+    - description: "Use toRef() and toRefs() for reactive object properties"
+      code: |
+        const user = reactive({
+          name: 'John',
+          age: 30
+        })
+        
+        // Destructure with toRefs
+        const { name, age } = toRefs(user)
+        
+        // Or create individual refs
+        const userName = toRef(user, 'name')
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript"]
+  frameworks: ["vue"]
+  rep_version: "^1.0"
+---
+meta:
+  id: vue3-event-handling
+  name: Vue 3 Event Handling Patterns
+  version: 1.0.0
+  description: "Use typed event handling with defineEmits in Vue 3 components"
+  authors: ["emma"]
+  license: MIT
+  tags: ["vue3", "events", "emits", "type-safety"]
+
+rule:
+  trigger:
+    keywords: ["$emit", "defineEmits", "emit"]
+    file_pattern: "**/*.vue"
+    language: "typescript"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "this\\\\.\\$emit"
+      negated: false
+      
+    - type: "code_pattern"
+      pattern: "defineEmits\\(\\s*\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use defineEmits with TypeScript for typed event handling"
+      code: |
+        // Before (Options API)
+        this.$emit('update:modelValue', newValue)
+        
+        // After (Composition API)
+        const emit = defineEmits<{
+          (e: 'update:modelValue', value: string): void
+          (e: 'submit', formData: FormData): void
+          (e: 'cancel'): void
+        }>()
+        
+        emit('update:modelValue', newValue)
+      priority: "high"
+      
+    - description: "Define event payload types for better type safety"
+      code: |
+        interface UpdateEvent {
+          value: string
+          isValid: boolean
+        }
+        
+        const emit = defineEmits<{
+          (e: 'update', payload: UpdateEvent): void
+          (e: 'error', message: string): void
+        }>()
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript"]
+  frameworks: ["vue"]
+  rep_version: "^1.0"
+---
+meta:
+  id: vue3-component-organization
+  name: Vue 3 Component Organization
+  version: 1.0.0
+  description: "Organize Vue 3 component code with consistent structure and composition API"
+  authors: ["frank"]
+  license: MIT
+  tags: ["vue3", "component", "organization", "structure"]
+
+rule:
+  trigger:
+    keywords: ["script", "setup", "export"]
+    file_pattern: "**/*.vue"
+    language: "typescript"
+    
+  conditions:
+    - type: "code_contains"
+      condition: "Vue component without consistent organization"
+      negated: false
+      
+  suggestions:
+    - description: "Use script setup syntax with consistent import organization"
+      code: |
+        <script setup lang="ts">
+        // 1. Vue imports
+        import { ref, reactive, computed } from 'vue'
+        
+        // 2. Component imports
+        import MyComponent from './MyComponent.vue'
+        
+        // 3. Utility imports
+        import { formatDate, validateEmail } from '@/utils'
+        
+        // 4. Type imports
+        import type { User, ApiResponse } from '@/types'
+        
+        // 5. Props and emits
+        interface Props {
+          title: string
+          user?: User
+        }
+        
+        const props = defineProps<Props>()
+        const emit = defineEmits<{
+          (e: 'update', value: string): void
+        }>()
+        
+        // 6. Reactive data
+        const count = ref(0)
+        const userData = reactive({
+          name: '',
+          email: ''
+        })
+        
+        // 7. Computed properties
+        const formattedName = computed(() => 
+          userData.name.trim().toUpperCase()
+        )
+        
+        // 8. Methods
+        function handleSubmit() {
+          // implementation
+        }
+        
+        // 9. Lifecycle hooks
+        onMounted(() => {
+          // initialization
+        })
+        </script>
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript"]
+  frameworks: ["vue"]
+  rep_version: "^1.0"
+---
+meta:
+  id: vue3-pinia-store
+  name: Vue 3 Pinia Store Patterns
+  version: 1.0.0
+  description: "Use Pinia stores with proper TypeScript typing and composition API patterns"
+  authors: ["grace"]
+  license: MIT
+  tags: ["vue3", "pinia", "state-management", "store"]
+
+rule:
+  trigger:
+    keywords: ["defineStore", "store", "pinia"]
+    file_pattern: "**/*.ts"
+    language: "typescript"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "defineStore\\([^,]*,[^{]*\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use Pinia store with TypeScript interface for state"
+      code: |
+        interface UserState {
+          users: User[]
+          currentUser: User | null
+          loading: boolean
+        }
+        
+        export const useUserStore = defineStore('user', {
+          state: (): UserState => ({
+            users: [],
+            currentUser: null,
+            loading: false
+          }),
+          
+          getters: {
+            activeUsers: (state) => state.users.filter(user => user.active),
+            getUserById: (state) => (id: number) => 
+              state.users.find(user => user.id === id)
+          },
+          
+          actions: {
+            async fetchUsers() {
+              this.loading = true
+              try {
+                const response = await api.getUsers()
+                this.users = response.data
+              } catch (error) {
+                console.error('Failed to fetch users:', error)
+              } finally {
+                this.loading = false
+              }
+            }
+          }
+        })
+      priority: "high"
+      
+    - description: "Use composition API style for Pinia stores"
+      code: |
+        export const useUserStore = defineStore('user', () => {
+          const users = ref<User[]>([])
+          const currentUser = ref<User | null>(null)
+          const loading = ref(false)
+          
+          const activeUsers = computed(() => 
+            users.value.filter(user => user.active)
+          )
+          
+          function getUserById(id: number) {
+            return users.value.find(user => user.id === id)
+          }
+          
+          async function fetchUsers() {
+            loading.value = true
+            try {
+              const response = await api.getUsers()
+              users.value = response.data
+            } catch (error) {
+              console.error('Failed to fetch users:', error)
+            } finally {
+              loading.value = false
+            }
+          }
+          
+          return { users, currentUser, loading, activeUsers, getUserById, fetchUsers }
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript"]
+  frameworks: ["vue", "pinia"]
+  rep_version: "^1.0"
+  dependencies:
+    pinia: ">=2.0"
+---
+meta:
+  id: vue3-router-guards
+  name: Vue 3 Router Navigation Guards
+  version: 1.0.0
+  description: "Implement Vue Router navigation guards with proper error handling and TypeScript support"
+  authors: ["henry"]
+  license: MIT
+  tags: ["vue3", "router", "navigation-guards", "authentication"]
+
+rule:
+  trigger:
+    keywords: ["beforeEach", "beforeResolve", "afterEach"]
+    file_pattern: "**/router/**/*.ts"
+    language: "typescript"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "router\\.beforeEach\\([^)]*\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use typed navigation guards with proper authentication check"
+      code: |
+        router.beforeEach((to, from, next) => {
+          const authStore = useAuthStore()
+          
+          // Check if route requires authentication
+          if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+            next({ 
+              name: 'login', 
+              query: { redirect: to.fullPath } 
+            })
+            return
+          }
+          
+          // Check if user has required permissions
+          if (to.meta.requiredPermissions) {
+            const hasPermission = authStore.hasPermissions(to.meta.requiredPermissions)
+            if (!hasPermission) {
+              next({ name: 'forbidden' })
+              return
+            }
+          }
+          
+          next()
+        })
+      priority: "high"
+      
+    - description: "Add global error handling for navigation guards"
+      code: |
+        router.beforeEach(async (to, from, next) => {
+          try {
+            const authStore = useAuthStore()
+            
+            // Wait for auth initialization if needed
+            if (!authStore.isInitialized) {
+              await authStore.initialize()
+            }
+            
+            // Authentication and authorization checks...
+            next()
+            
+          } catch (error) {
+            console.error('Navigation guard error:', error)
+            next({ name: 'error', query: { message: 'Navigation failed' } })
+          }
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript"]
+  frameworks: ["vue", "vue-router"]
+  rep_version: "^1.0"
+  dependencies:
+    "vue-router": ">=4.0"
+---
+meta:
+  id: vue3-composition-reusability
+  name: Vue 3 Composition Function Reusability
+  version: 1.0.0
+  description: "Create reusable composition functions with proper parameterization and return types"
+  authors: ["isabella"]
+  license: MIT
+  tags: ["vue3", "composition", "reusability", "hooks"]
+
+rule:
+  trigger:
+    keywords: ["function", "export", "return"]
+    file_pattern: "**/composables/**/*.ts"
+    language: "typescript"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "export\\s+function\\s+[a-zA-Z]+\\s*\\([^)]*\\)\\s*\\{"
+      negated: false
+      
+  suggestions:
+    - description: "Create parameterized composable functions with flexible options"
+      code: |
+        interface UseFetchOptions {
+          immediate?: boolean
+          timeout?: number
+          retryCount?: number
+        }
+        
+        export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
+          const data = ref<T | null>(null)
+          const loading = ref(false)
+          const error = ref<Error | null>(null)
+          
+          async function execute() {
+            loading.value = true
+            error.value = null
+            
+            try {
+              const response = await fetch(url, {
+                signal: AbortSignal.timeout(options.timeout || 5000)
+              })
+              data.value = await response.json()
+            } catch (err) {
+              error.value = err as Error
+            } finally {
+              loading.value = false
+            }
+          }
+          
+          // Auto-execute if immediate is true
+          if (options.immediate) {
+            execute()
+          }
+          
+          return {
+            data: readonly(data),
+            loading: readonly(loading),
+            error: readonly(error),
+            execute
+          }
+        }
+      priority: "high"
+      
+    - description: "Use generics for type-safe composable functions"
+      code: |
+        export function useLocalStorage<T>(key: string, defaultValue: T) {
+          const data = ref<T>(defaultValue)
+          
+          // Load from localStorage
+          const stored = localStorage.getItem(key)
+          if (stored) {
+            try {
+              data.value = JSON.parse(stored)
+            } catch {
+              data.value = defaultValue
+            }
+          }
+          
+          // Watch for changes and save to localStorage
+          watch(data, (newValue) => {
+            localStorage.setItem(key, JSON.stringify(newValue))
+          }, { deep: true })
+          
+          return { data }
+        }
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript"]
+  frameworks: ["vue"]
+  rep_version: "^1.0"
+---
+meta:
+  id: vue3-error-boundaries
+  name: Vue 3 Error Boundaries and Error Handling
+  version: 1.0.0
+  description: "Implement proper error boundaries and error handling in Vue 3 applications"
+  authors: ["jack"]
+  license: MIT
+  tags: ["vue3", "error-handling", "error-boundaries", "reliability"]
+
+rule:
+  trigger:
+    keywords: ["try", "catch", "onErrorCaptured"]
+    file_pattern: "**/*.vue"
+    language: "typescript"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "catch\\s*\\([^)]*\\)\\s*\\{"
+      negated: false
+      
+  suggestions:
+    - description: "Use onErrorCaptured for component-level error boundaries"
+      code: |
+        <script setup lang="ts">
+        import { ref, onErrorCaptured } from 'vue'
+        
+        const error = ref<Error | null>(null)
+        
+        onErrorCaptured((err, instance, info) => {
+          error.value = err
+          console.error('Error captured:', err, info)
+          
+          // Prevent error from propagating further
+          return false
+        })
+        
+        function clearError() {
+          error.value = null
+        }
+        </script>
+        
+        <template>
+          <div v-if="error" class="error-boundary">
+            <h3>Something went wrong</h3>
+            <p>{{ error.message }}</p>
+            <button @click="clearError">Try again</button>
+          </div>
+          <slot v-else />
+        </template>
+      priority: "high"
+      
+    - description: "Implement global error handler for uncaught errors"
+      code: |
+        // In main.ts or main.js
+        app.config.errorHandler = (err, instance, info) => {
+          // Log error to error reporting service
+          console.error('Global error:', err, info)
+          
+          // Show user-friendly error message
+          showErrorNotification('An unexpected error occurred')
+        }
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript"]
+  frameworks: ["vue"]
+  rep_version: "^1.0"
+---
+meta:
+  id: vue3-performance-optimization
+  name: Vue 3 Performance Optimization Patterns
+  version: 1.0.0
+  description: "Apply performance optimization techniques in Vue 3 applications"
+  authors: ["karen"]
+  license: MIT
+  tags: ["vue3", "performance", "optimization", "memoization"]
+
+rule:
+  trigger:
+    keywords: ["computed", "watch", "watchEffect"]
+    file_pattern: "**/*.vue"
+    language: "typescript"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "computed\\([^)]*\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use computed properties for derived data instead of methods"
+      code: |
+        // Before
+        function getFullName() {
+          return `${firstName.value} ${lastName.value}`
+        }
+        
+        // After
+        const fullName = computed(() => 
+          `${firstName.value} ${lastName.value}`
+        )
+      priority: "high"
+      
+    - description: "Use watch with specific dependencies instead of watchEffect"
+      code: |
+        // Before
+        watchEffect(() => {
+          // This runs whenever ANY reactive dependency changes
+          console.log('Something changed')
+        })
+        
+        // After
+        watch([firstName, lastName], ([newFirst, newLast]) => {
+          // Only runs when firstName or lastName changes
+          console.log('Name changed:', newFirst, newLast)
+        })
+      priority: "medium"
+      
+    - description: "Use shallowRef and markRaw for non-reactive objects"
+      code: |
+        import { shallowRef, markRaw } from 'vue'
+        
+        // For large objects that don't need deep reactivity
+        const largeConfig = shallowRef({
+          // configuration object
+        })
+        
+        // For objects that should never be reactive
+        const utilityObject = markRaw({
+          // utility methods
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript"]
+  frameworks: ["vue"]
+  rep_version: "^1.0"

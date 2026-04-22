@@ -1,0 +1,890 @@
+meta:
+  id: unit-test-structure
+  name: Unit Test Structure and Organization
+  version: 1.0.0
+  description: "Follow consistent unit test structure with Arrange-Act-Assert pattern and proper test organization"
+  authors: ["alice", "bob"]
+  license: MIT
+  tags: ["testing", "unit-test", "structure", "pytest", "jest"]
+
+rule:
+  trigger:
+    keywords: ["test", "describe", "it", "should"]
+    file_pattern: "**/test/**/*.ts"
+    language: "typescript"
+    context: "Unit test file structure"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "test\\([^,]*,[^{]*\\{.*expect\\([^}]*\\)"
+      negated: false
+      
+    - type: "code_contains"
+      condition: "Test without clear Arrange-Act-Assert separation"
+      negated: false
+      
+  suggestions:
+    - description: "Use Arrange-Act-Assert pattern for clear test structure"
+      code: |
+        // ✅ Good: Clear AAA pattern
+        test('should add two numbers correctly', () => {
+          // Arrange
+          const a = 5
+          const b = 3
+          const expected = 8
+          
+          // Act
+          const result = add(a, b)
+          
+          // Assert
+          expect(result).toBe(expected)
+        })
+        
+        // ❌ Bad: Mixed logic
+        test('should add two numbers', () => {
+          expect(add(5, 3)).toBe(8) // Mixed arrange, act, assert
+        })
+      priority: "high"
+      
+    - description: "Organize tests with describe blocks for related functionality"
+      code: |
+        describe('Calculator', () => {
+          describe('add()', () => {
+            test('should add positive numbers', () => {
+              // Arrange
+              const a = 2
+              const b = 3
+              
+              // Act
+              const result = add(a, b)
+              
+              // Assert
+              expect(result).toBe(5)
+            })
+            
+            test('should add negative numbers', () => {
+              const result = add(-2, -3)
+              expect(result).toBe(-5)
+            })
+          })
+          
+          describe('subtract()', () => {
+            test('should subtract numbers correctly', () => {
+              const result = subtract(5, 3)
+              expect(result).toBe(2)
+            })
+          })
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["jest", "vitest"]
+  rep_version: "^1.0"
+---
+meta:
+  id: test-mocking-patterns
+  name: Test Mocking Best Practices
+  version: 1.0.0
+  description: "Use proper mocking techniques to isolate units under test and improve test reliability"
+  authors: ["charlie"]
+  license: MIT
+  tags: ["testing", "mocking", "jest", "unit-test"]
+
+rule:
+  trigger:
+    keywords: ["jest.mock", "vi.mock", "mock", "spyOn"]
+    file_pattern: "**/test/**/*.ts"
+    language: "typescript"
+    context: "Test mocking implementation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "jest\\.mock\\([^,]*,[^{]*\\{.*returnValue"
+      negated: false
+      
+  suggestions:
+    - description: "Use dependency injection and interface mocking for better testability"
+      code: |
+        // ✅ Good: Interface-based mocking
+        interface UserRepository {
+          findById(id: number): Promise<User | null>
+          save(user: User): Promise<User>
+        }
+        
+        class UserService {
+          constructor(private userRepo: UserRepository) {}
+          
+          async getUser(id: number): Promise<User> {
+            const user = await this.userRepo.findById(id)
+            if (!user) {
+              throw new Error('User not found')
+            }
+            return user
+          }
+        }
+        
+        // Test with mock
+        test('should throw error when user not found', async () => {
+          // Arrange
+          const mockRepo: UserRepository = {
+            findById: jest.fn().mockResolvedValue(null),
+            save: jest.fn()
+          }
+          const service = new UserService(mockRepo)
+          
+          // Act & Assert
+          await expect(service.getUser(1)).rejects.toThrow('User not found')
+          expect(mockRepo.findById).toHaveBeenCalledWith(1)
+        })
+        
+        // ❌ Bad: Direct module mocking
+        jest.mock('../api', () => ({
+          fetchUser: jest.fn().mockResolvedValue(null)
+        }))
+      priority: "high"
+      
+    - description: "Use partial mocking for complex dependencies"
+      code: |
+        // Partial mock example
+        const realModule = jest.requireActual('../utils')
+        
+        jest.mock('../utils', () => ({
+          ...realModule,
+          complexCalculation: jest.fn().mockReturnValue(42)
+        }))
+        
+        test('should use mocked complex calculation', () => {
+          // The rest of the module works normally
+          // Only complexCalculation is mocked
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["jest", "vitest"]
+  rep_version: "^1.0"
+---
+meta:
+  id: e2e-testing-patterns
+  name: E2E Testing Best Practices
+  version: 1.0.0
+  description: "Implement effective end-to-end testing with proper setup, teardown, and test data management"
+  authors: ["david"]
+  license: MIT
+  tags: ["testing", "e2e", "cypress", "playwright", "integration"]
+
+rule:
+  trigger:
+    keywords: ["cy.visit", "page.goto", "beforeEach", "afterEach"]
+    file_pattern: "**/e2e/**/*.ts"
+    language: "typescript"
+    context: "E2E test implementation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "describe\\([^,]*,[^{]*\\{.*it\\([^}]*\\}\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use proper test setup and teardown with test data isolation"
+      code: |
+        describe('User Registration', () => {
+          beforeEach(() => {
+            // Reset database before each test
+            cy.task('resetDatabase')
+            
+            // Visit the application
+            cy.visit('/register')
+          })
+          
+          afterEach(() => {
+            // Clean up after each test
+            cy.clearCookies()
+            cy.clearLocalStorage()
+          })
+          
+          it('should register a new user successfully', () => {
+            // Arrange
+            const testUser = {
+              email: 'test@example.com',
+              password: 'Password123!',
+              name: 'Test User'
+            }
+            
+            // Act
+            cy.get('[data-testid=email-input]').type(testUser.email)
+            cy.get('[data-testid=password-input]').type(testUser.password)
+            cy.get('[data-testid=name-input]').type(testUser.name)
+            cy.get('[data-testid=submit-button]').click()
+            
+            // Assert
+            cy.url().should('include', '/dashboard')
+            cy.get('[data-testid=welcome-message]')
+              .should('contain', `Welcome, ${testUser.name}`)
+          })
+          
+          it('should show validation errors for invalid input', () => {
+            cy.get('[data-testid=email-input]').type('invalid-email')
+            cy.get('[data-testid=submit-button]').click()
+            
+            cy.get('[data-testid=email-error]')
+              .should('contain', 'Please enter a valid email')
+          })
+        })
+      priority: "high"
+      
+    - description: "Use Page Object Model for maintainable E2E tests"
+      code: |
+        class RegistrationPage {
+          elements = {
+            emailInput: () => cy.get('[data-testid=email-input]'),
+            passwordInput: () => cy.get('[data-testid=password-input]'),
+            submitButton: () => cy.get('[data-testid=submit-button]'),
+            emailError: () => cy.get('[data-testid=email-error]')
+          }
+          
+          visit() {
+            cy.visit('/register')
+          }
+          
+          fillForm(user: { email: string; password: string }) {
+            this.elements.emailInput().type(user.email)
+            this.elements.passwordInput().type(user.password)
+          }
+          
+          submit() {
+            this.elements.submitButton().click()
+          }
+        }
+        
+        describe('User Registration with POM', () => {
+          const registrationPage = new RegistrationPage()
+          
+          beforeEach(() => {
+            registrationPage.visit()
+          })
+          
+          it('should register successfully', () => {
+            registrationPage.fillForm({
+              email: 'test@example.com',
+              password: 'Password123!'
+            })
+            registrationPage.submit()
+            
+            cy.url().should('include', '/dashboard')
+          })
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["cypress", "playwright"]
+  rep_version: "^1.0"
+---
+meta:
+  id: test-data-management
+  name: Test Data Management Patterns
+  version: 1.0.0
+  description: "Manage test data effectively using factories, fixtures, and builders for reliable tests"
+  authors: ["emma"]
+  license: MIT
+  tags: ["testing", "test-data", "factories", "fixtures"]
+
+rule:
+  trigger:
+    keywords: ["factory", "fixture", "builder", "create"]
+    file_pattern: "**/test/**/*.ts"
+    language: "typescript"
+    context: "Test data creation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "const\\s+\\w+\\s*=\\s*\\{[^}]*\\}"
+      negated: false
+      
+  suggestions:
+    - description: "Use factory functions for creating test data with sensible defaults"
+      code: |
+        // User factory
+        interface User {
+          id: number
+          name: string
+          email: string
+          role: 'admin' | 'user'
+          createdAt: Date
+        }
+        
+        function createUser(overrides: Partial<User> = {}): User {
+          const defaults: User = {
+            id: 1,
+            name: 'Test User',
+            email: 'test@example.com',
+            role: 'user',
+            createdAt: new Date('2023-01-01')
+          }
+          
+          return { ...defaults, ...overrides }
+        }
+        
+        // Usage in tests
+        test('should handle admin users', () => {
+          const adminUser = createUser({ role: 'admin' })
+          const result = canAccessAdminPanel(adminUser)
+          expect(result).toBe(true)
+        })
+        
+        test('should handle users with specific email', () => {
+          const user = createUser({ email: 'special@example.com' })
+          const result = processUser(user)
+          expect(result.email).toBe('special@example.com')
+        })
+      priority: "high"
+      
+    - description: "Use builder pattern for complex object creation"
+      code: |
+        class UserBuilder {
+          private user: Partial<User> = {}
+          
+          withId(id: number): UserBuilder {
+            this.user.id = id
+            return this
+          }
+          
+          withName(name: string): UserBuilder {
+            this.user.name = name
+            return this
+          }
+          
+          withEmail(email: string): UserBuilder {
+            this.user.email = email
+            return this
+          }
+          
+          asAdmin(): UserBuilder {
+            this.user.role = 'admin'
+            return this
+          }
+          
+          build(): User {
+            return createUser(this.user)
+          }
+        }
+        
+        // Usage
+        const adminUser = new UserBuilder()
+          .withId(123)
+          .withName('Admin User')
+          .withEmail('admin@example.com')
+          .asAdmin()
+          .build()
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["jest", "vitest"]
+  rep_version: "^1.0"
+---
+meta:
+  id: async-testing-patterns
+  name: Async Testing Patterns
+  version: 1.0.0
+  description: "Properly handle asynchronous code in tests with async/await, promises, and proper error handling"
+  authors: ["frank"]
+  license: MIT
+  tags: ["testing", "async", "promises", "error-handling"]
+
+rule:
+  trigger:
+    keywords: ["async", "await", "Promise", "then"]
+    file_pattern: "**/test/**/*.ts"
+    language: "typescript"
+    context: "Async test implementation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "test\\([^,]*,[^{]*async\\s*\\([^}]*\\}\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use async/await for cleaner asynchronous test code"
+      code: |
+        // ✅ Good: Using async/await
+        test('should fetch user data asynchronously', async () => {
+          // Arrange
+          const userId = 123
+          const expectedUser = { id: userId, name: 'Test User' }
+          
+          // Mock API call
+          jest.spyOn(api, 'fetchUser').mockResolvedValue(expectedUser)
+          
+          // Act
+          const user = await getUserById(userId)
+          
+          // Assert
+          expect(user).toEqual(expectedUser)
+          expect(api.fetchUser).toHaveBeenCalledWith(userId)
+        })
+        
+        // ❌ Bad: Using promise chains
+        test('should fetch user data', () => {
+          return getUserById(123).then(user => {
+            expect(user.id).toBe(123)
+          })
+        })
+      priority: "high"
+      
+    - description: "Test both success and error cases for async functions"
+      code: |
+        test('should handle API errors correctly', async () => {
+          // Arrange
+          const errorMessage = 'User not found'
+          jest.spyOn(api, 'fetchUser').mockRejectedValue(new Error(errorMessage))
+          
+          // Act & Assert
+          await expect(getUserById(999)).rejects.toThrow(errorMessage)
+        })
+        
+        test('should handle timeout scenarios', async () => {
+          jest.spyOn(api, 'fetchUser').mockImplementation(
+            () => new Promise((resolve) => setTimeout(resolve, 1000))
+          )
+          
+          // Test with timeout
+          await expect(getUserById(123)).resolves.toBeDefined()
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["jest", "vitest"]
+  rep_version: "^1.0"
+---
+meta:
+  id: test-coverage-patterns
+  name: Test Coverage and Quality Patterns
+  version: 1.0.0
+  description: "Achieve meaningful test coverage by testing edge cases, boundary conditions, and error scenarios"
+  authors: ["grace"]
+  license: MIT
+  tags: ["testing", "coverage", "quality", "edge-cases"]
+
+rule:
+  trigger:
+    keywords: ["coverage", "edge", "boundary", "error"]
+    file_pattern: "**/test/**/*.ts"
+    language: "typescript"
+    context: "Test coverage implementation"
+    
+  conditions:
+    - type: "code_contains"
+      condition: "Test missing edge case coverage"
+      negated: false
+      
+  suggestions:
+    - description: "Test boundary conditions and edge cases systematically"
+      code: |
+        describe('validateAge function', () => {
+          test.each([
+            [0, false],   // Minimum boundary
+            [1, true],    // Just above minimum
+            [17, false],  // Just below adult age
+            [18, true],   // Adult age boundary
+            [65, true],   // Normal case
+            [120, true],  // High but valid
+            [121, false], // Above maximum
+            [-1, false]   // Negative (invalid)
+          ])('should validate age %i as %s', (age, expected) => {
+            expect(validateAge(age)).toBe(expected)
+          })
+        })
+        
+        describe('processInput function', () => {
+          test.each([
+            ['', false],           // Empty string
+            ['   ', false],        // Whitespace only
+            ['abc', true],         // Normal string
+            ['a'.repeat(1000), true], // Long string
+            [null, false],         // Null input
+            [undefined, false]     // Undefined input
+          ])('should process input %s as %s', (input, expected) => {
+            expect(processInput(input)).toBe(expected)
+          })
+        })
+      priority: "high"
+      
+    - description: "Use parameterized tests for similar test scenarios"
+      code: |
+        // Parameterized test for different user roles
+        describe('User permissions', () => {
+          test.each([
+            ['admin', ['read', 'write', 'delete'], true],
+            ['editor', ['read', 'write'], true],
+            ['viewer', ['read'], true],
+            ['guest', ['read', 'write'], false],
+            ['unknown', ['read'], false]
+          ])('should %s have %s permissions: %s', 
+            (role, permissions, expected) => {
+              const user = createUser({ role })
+              const result = hasPermissions(user, permissions)
+              expect(result).toBe(expected)
+            }
+          )
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["jest", "vitest"]
+  rep_version: "^1.0"
+---
+meta:
+  id: performance-testing
+  name: Performance Testing Patterns
+  version: 1.0.0
+  description: "Implement performance testing to ensure application meets performance requirements and identify bottlenecks"
+  authors: ["henry"]
+  license: MIT
+  tags: ["testing", "performance", "benchmark", "optimization"]
+
+rule:
+  trigger:
+    keywords: ["performance", "benchmark", "time", "memory"]
+    file_pattern: "**/test/**/*.ts"
+    language: "typescript"
+    context: "Performance test implementation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "console\\.time\\([^)]*\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use performance testing libraries for accurate measurements"
+      code: |
+        import { performance } from 'perf_hooks'
+        
+        describe('Algorithm performance', () => {
+          test('should process large dataset efficiently', () => {
+            // Arrange
+            const largeDataset = Array(100000).fill(0).map((_, i) => i)
+            
+            // Measure performance
+            const startTime = performance.now()
+            const startMemory = process.memoryUsage().heapUsed
+            
+            // Act
+            const result = processLargeDataset(largeDataset)
+            
+            const endTime = performance.now()
+            const endMemory = process.memoryUsage().heapUsed
+            
+            const executionTime = endTime - startTime
+            const memoryUsed = endMemory - startMemory
+            
+            // Assert
+            expect(executionTime).toBeLessThan(1000) // Should complete in < 1 second
+            expect(memoryUsed).toBeLessThan(50 * 1024 * 1024) // Should use < 50MB
+            expect(result).toHaveLength(largeDataset.length)
+          })
+          
+          test('should handle worst-case scenario efficiently', () => {
+            const worstCaseData = createWorstCaseScenario(10000)
+            
+            const start = performance.now()
+            const result = processData(worstCaseData)
+            const duration = performance.now() - start
+            
+            // Performance assertion
+            expect(duration).toBeLessThan(500) // Max 500ms for worst case
+          })
+        })
+      priority: "high"
+      
+    - description: "Compare performance between different implementations"
+      code: |
+        describe('Performance comparison', () => {
+          const testData = generateTestData(1000)
+          
+          function measurePerformance(fn: Function, data: any[]): number {
+            const start = performance.now()
+            fn(data)
+            return performance.now() - start
+          }
+          
+          test('should compare algorithm performance', () => {
+            const time1 = measurePerformance(algorithmV1, testData)
+            const time2 = measurePerformance(algorithmV2, testData)
+            
+            // V2 should be at least 20% faster than V1
+            expect(time2).toBeLessThan(time1 * 0.8)
+          })
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["jest", "vitest"]
+  rep_version: "^1.0"
+---
+meta:
+  id: snapshot-testing
+  name: Snapshot Testing Patterns
+  version: 1.0.0
+  description: "Use snapshot testing for UI components and complex data structures to detect unintended changes"
+  authors: ["isabella"]
+  license: MIT
+  tags: ["testing", "snapshot", "ui", "react", "vue"]
+
+rule:
+  trigger:
+    keywords: ["toMatchSnapshot", "expect\\.snapshot", "snapshot"]
+    file_pattern: "**/test/**/*.ts"
+    language: "typescript"
+    context: "Snapshot test implementation"
+    
+  conditions:
+    - type: "code_pattern"
+      pattern: "expect\\([^)]*\\)\\.toMatchSnapshot\\(\\)"
+      negated: false
+      
+  suggestions:
+    - description: "Use snapshot testing for UI components with meaningful names"
+      code: |
+        import { render } from '@testing-library/react'
+        
+        describe('Button component', () => {
+          test('should render primary button correctly', () => {
+            const { container } = render(
+              <Button variant="primary" onClick={() => {}}>
+                Click me
+              </Button>
+            )
+            
+            expect(container.firstChild).toMatchSnapshot('primary-button')
+          })
+          
+          test('should render disabled button correctly', () => {
+            const { container } = render(
+              <Button variant="secondary" disabled onClick={() => {}}>
+                Disabled Button
+              </Button>
+            )
+            
+            expect(container.firstChild).toMatchSnapshot('disabled-button')
+          })
+        })
+        
+        describe('Complex data structures', () => {
+          test('should serialize user data correctly', () => {
+            const userData = {
+              id: 123,
+              name: 'John Doe',
+              email: 'john@example.com',
+              preferences: {
+                theme: 'dark',
+                notifications: true,
+                language: 'en'
+              },
+              createdAt: new Date('2023-01-01'),
+              updatedAt: new Date('2023-01-02')
+            }
+            
+            expect(userData).toMatchSnapshot('user-data-structure')
+          })
+        })
+      priority: "high"
+      
+    - description: "Use inline snapshots for small, focused tests"
+      code: |
+        test('should format date correctly', () => {
+          const date = new Date('2023-12-25')
+          const formatted = formatDate(date)
+          
+          expect(formatted).toMatchInlineSnapshot(`"December 25, 2023"`)
+        })
+        
+        test('should generate error message', () => {
+          const error = new ValidationError('Email is required')
+          const message = getErrorMessage(error)
+          
+          expect(message).toMatchInlineSnapshot(`"Validation failed: Email is required"`)
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["jest", "vitest"]
+  rep_version: "^1.0"
+---
+meta:
+  id: test-maintenance-patterns
+  name: Test Maintenance and Refactoring Patterns
+  version: 1.0.0
+  description: "Keep tests maintainable with clear naming, organization, and regular refactoring practices"
+  authors: ["jack"]
+  license: MIT
+  tags: ["testing", "maintenance", "refactoring", "quality"]
+
+rule:
+  trigger:
+    keywords: ["refactor", "cleanup", "maintain", "organize"]
+    file_pattern: "**/test/**/*.ts"
+    language: "typescript"
+    context: "Test maintenance practices"
+    
+  conditions:
+    - type: "code_contains"
+      condition: "Test with unclear naming or organization"
+      negated: false
+      
+  suggestions:
+    - description: "Use descriptive test names that explain what is being tested"
+      code: |
+        // ✅ Good: Descriptive test names
+        test('should return null when user is not found by email', () => {
+          // Test implementation
+        })
+        
+        test('should throw ValidationError when email format is invalid', () => {
+          // Test implementation
+        })
+        
+        test('should update user last login timestamp on successful authentication', () => {
+          // Test implementation
+        })
+        
+        // ❌ Bad: Unclear test names
+        test('test user function', () => {
+          // What exactly is being tested?
+        })
+        
+        test('should work correctly', () => {
+          // Too vague
+        })
+      priority: "high"
+      
+    - description: "Organize tests by feature and use shared setup utilities"
+      code: |
+        // Shared test utilities
+        const TestUtils = {
+          createTestUser: (overrides = {}) => createUser(overrides),
+          mockApiResponse: (data) => jest.spyOn(api, 'call').mockResolvedValue(data),
+          waitForAsync: () => new Promise(resolve => setTimeout(resolve, 0))
+        }
+        
+        describe('User Authentication', () => {
+          beforeEach(() => {
+            // Common setup for all authentication tests
+            TestUtils.mockApiResponse({ success: true })
+          })
+          
+          describe('Login', () => {
+            test('should authenticate with valid credentials', () => {
+              // Test implementation using shared utilities
+            })
+            
+            test('should reject invalid credentials', () => {
+              // Test implementation
+            })
+          })
+          
+          describe('Logout', () => {
+            test('should clear user session', () => {
+              // Test implementation
+            })
+          })
+        })
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["jest", "vitest"]
+  rep_version: "^1.0"
+---
+meta:
+  id: test-driven-development
+  name: Test-Driven Development (TDD) Patterns
+  version: 1.0.0
+  description: "Follow Test-Driven Development practices by writing tests before implementation and iterating through red-green-refactor cycle"
+  authors: ["karen"]
+  license: MIT
+  tags: ["testing", "tdd", "development", "methodology"]
+
+rule:
+  trigger:
+    keywords: ["TDD", "red-green-refactor", "test-first"]
+    file_pattern: "**/test/**/*.ts"
+    language: "typescript"
+    context: "TDD implementation"
+    
+  conditions:
+    - type: "code_contains"
+      condition: "Implementation without corresponding tests"
+      negated: false
+      
+  suggestions:
+    - description: "Follow the red-green-refactor cycle for TDD"
+      code: |
+        // Step 1: Write a failing test (RED)
+        test('should add two numbers', () => {
+          expect(add(2, 3)).toBe(5) // This will fail initially
+        })
+        
+        // Step 2: Write minimal implementation to pass test (GREEN)
+        function add(a: number, b: number): number {
+          return a + b // Simple implementation
+        }
+        
+        // Step 3: Refactor while keeping tests green (REFACTOR)
+        function add(a: number, b: number): number {
+          // More robust implementation
+          if (typeof a !== 'number' || typeof b !== 'number') {
+            throw new Error('Both arguments must be numbers')
+          }
+          return a + b
+        }
+        
+        // Add more tests for edge cases
+        test('should throw error for non-number inputs', () => {
+          expect(() => add('2' as any, 3)).toThrow('Both arguments must be numbers')
+        })
+      priority: "high"
+      
+    - description: "Use TDD for API design and interface development"
+      code: |
+        // Start with the interface you wish you had
+        describe('UserService', () => {
+          test('should create user with valid data', async () => {
+            // Arrange
+            const userData = { name: 'John', email: 'john@example.com' }
+            
+            // Act (this is the API we want)
+            const user = await UserService.create(userData)
+            
+            // Assert
+            expect(user.id).toBeDefined()
+            expect(user.name).toBe('John')
+            expect(user.email).toBe('john@example.com')
+          })
+          
+          test('should validate user data before creation', async () => {
+            const invalidData = { name: '', email: 'invalid' }
+            
+            await expect(UserService.create(invalidData))
+              .rejects.toThrow('Invalid user data')
+          })
+        })
+        
+        // Now implement UserService to make these tests pass
+        class UserService {
+          static async create(data: any) {
+            // Implementation driven by tests
+          }
+        }
+      priority: "medium"
+
+compatibility:
+  languages: ["typescript", "javascript"]
+  frameworks: ["jest", "vitest"]
+  rep_version: "^1.0"

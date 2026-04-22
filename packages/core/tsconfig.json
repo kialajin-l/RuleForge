@@ -1,0 +1,28 @@
+﻿{
+    "include":  [
+                    "src/**/*"
+                ],
+    "exclude":  [
+                    "node_modules",
+                    "dist",
+                    "__tests__"
+                ],
+    "compilerOptions":  {
+                            "forceConsistentCasingInFileNames":  true,
+                            "sourceMap":  true,
+                            "strict":  true,
+                            "declaration":  true,
+                            "module":  "NodeNext",
+                            "moduleResolution":  "NodeNext",
+                            "rootDir":  "./src",
+                            "outDir":  "./dist",
+                            "skipLibCheck":  true,
+                            "target":  "ES2022",
+                            "resolveJsonModule":  true,
+                            "esModuleInterop":  true,
+                            "lib":  [
+                                        "ES2022"
+                                    ],
+                            "declarationMap":  true
+                        }
+}

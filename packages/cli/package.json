@@ -1,0 +1,73 @@
+{
+  "name": "@ruleforge/cli",
+  "version": "0.1.0",
+  "description": "RuleForge Command Line Interface - Extract and manage development rules from your codebase",
+  "type": "module",
+  "bin": {
+    "ruleforge": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint src/**/*.ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ruleforge",
+    "cli",
+    "rules",
+    "code-analysis",
+    "development",
+    "automation",
+    "yaml",
+    "typescript"
+  ],
+  "author": "RuleForge Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruleforge/ruleforge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ruleforge/ruleforge/issues"
+  },
+  "homepage": "https://ruleforge.dev",
+  "dependencies": {
+    "@ruleforge/core": "^0.1.0",
+    "commander": "^11.1.0",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.3",
+    "cli-progress": "^3.12.0",
+    "inquirer": "^9.2.10",
+    "fs-extra": "^11.2.0",
+    "js-yaml": "^4.1.0",
+    "archiver": "^6.0.1",
+    "unzipper": "^0.10.14"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/js-yaml": "^4.0.9",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.8.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "eslint": "^8.50.0",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.6.0",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.6"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

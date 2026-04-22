@@ -1,0 +1,29 @@
+{
+  "name": "@ruleforge/core-performance-tests",
+  "version": "1.0.0",
+  "description": "RuleForge 性能测试套件",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run benchmark.ts",
+    "test:large-file": "vitest run benchmark.ts --testNamePattern=\"大文件处理\"",
+    "test:batch": "vitest run benchmark.ts --testNamePattern=\"批量处理\"",
+    "test:cache": "vitest run benchmark.ts --testNamePattern=\"缓存效果\"",
+    "test:watch": "vitest benchmark.ts",
+    "benchmark": "tsx benchmark.ts",
+    "generate-data": "tsx utils/generate-test-data.ts",
+    "report": "tsx utils/generate-report.ts",
+    "clean": "rm -rf test-data/*.jsonl reports/*.json"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0",
+    "tsx": "^4.7.1"
+  },
+  "keywords": [
+    "performance",
+    "benchmark",
+    "ruleforge",
+    "testing"
+  ],
+  "author": "RuleForge Team",
+  "license": "MIT"
+}

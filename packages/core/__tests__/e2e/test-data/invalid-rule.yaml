@@ -1,0 +1,22 @@
+# 无效规则示例 - 缺少必需字段
+meta:
+  # id 字段缺失 - 这是必需字段
+  name: Invalid Rule Example
+  version: 1.0.0
+  description: This rule is missing required fields
+  authors: ["test-author"]
+  license: MIT
+rule:
+  trigger:
+    type: file_pattern
+    pattern: "**/*.ts"
+    # file_types 字段缺失 - 这是必需字段
+  conditions:
+    - type: code_contains
+      condition: "some condition"
+      negated: false
+  suggestions:
+    - description: Some suggestion
+      code: "console.log('example')"
+# compatibility 字段完全缺失 - 这是必需字段
+confidence: 0.8
