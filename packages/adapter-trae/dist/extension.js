@@ -13845,14 +13845,14 @@ var require_config_manager = __commonJS({
         languageFocus: zod_1.z.array(zod_1.z.string()).default(["typescript", "javascript", "vue", "python"]),
         maxFileSize: zod_1.z.number().int().min(1024).default(10 * 1024 * 1024)
         // 10MB
-      }),
+      }).default({}),
       privacy: zod_1.z.object({
         autoRedact: zod_1.z.boolean().default(true),
         allowedPatterns: zod_1.z.array(zod_1.z.string()).default([]),
         projectName: zod_1.z.string().default("{project_name}"),
         redactApiKeys: zod_1.z.boolean().default(true),
         redactPaths: zod_1.z.boolean().default(true)
-      }),
+      }).default({}),
       storage: zod_1.z.object({
         localRulesDir: zod_1.z.string().default(".ruleforge/rules"),
         cacheEnabled: zod_1.z.boolean().default(true),
@@ -13860,14 +13860,14 @@ var require_config_manager = __commonJS({
         // 2小时
         maxVersions: zod_1.z.number().int().min(1).default(10),
         backupEnabled: zod_1.z.boolean().default(true)
-      }),
+      }).default({}),
       output: zod_1.z.object({
         format: zod_1.z.enum(["yaml", "json"]).default("yaml"),
         prettyPrint: zod_1.z.boolean().default(true),
         includeComments: zod_1.z.boolean().default(true),
         validateOutput: zod_1.z.boolean().default(true),
         generateReport: zod_1.z.boolean().default(true)
-      }),
+      }).default({}),
       github: zod_1.z.object({
         enabled: zod_1.z.boolean().default(false),
         autoCreatePR: zod_1.z.boolean().default(false),
@@ -15504,6 +15504,9 @@ async function activate(context) {
   log("RuleForge \u63D2\u4EF6\u6FC0\u6D3B\u4E2D...");
   try {
     engine = new import_core.RuleForgeEngine();
+    await engine.initialize().catch((error) => {
+      log(`\u914D\u7F6E\u52A0\u8F7D\u5931\u8D25\uFF0C\u4F7F\u7528\u9ED8\u8BA4\u914D\u7F6E: ${error instanceof Error ? error.message : "\u672A\u77E5\u9519\u8BEF"}`, "warn");
+    });
     const workspaceFolder = vscode2.workspace.workspaceFolders?.[0];
     if (workspaceFolder) {
       sessionLogPath = path2.join(workspaceFolder.uri.fsPath, ".ruleforge", "logs");

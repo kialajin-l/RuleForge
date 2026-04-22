@@ -16,28 +16,28 @@ exports.RuleForgeConfigSchema = zod_1.z.object({
         logPath: zod_1.z.string().default('.ruleforge/logs'),
         languageFocus: zod_1.z.array(zod_1.z.string()).default(['typescript', 'javascript', 'vue', 'python']),
         maxFileSize: zod_1.z.number().int().min(1024).default(10 * 1024 * 1024) // 10MB
-    }),
+    }).default({}),
     privacy: zod_1.z.object({
         autoRedact: zod_1.z.boolean().default(true),
         allowedPatterns: zod_1.z.array(zod_1.z.string()).default([]),
         projectName: zod_1.z.string().default('{project_name}'),
         redactApiKeys: zod_1.z.boolean().default(true),
         redactPaths: zod_1.z.boolean().default(true)
-    }),
+    }).default({}),
     storage: zod_1.z.object({
         localRulesDir: zod_1.z.string().default('.ruleforge/rules'),
         cacheEnabled: zod_1.z.boolean().default(true),
         cacheTTL: zod_1.z.number().int().min(60).default(2 * 60 * 60), // 2小时
         maxVersions: zod_1.z.number().int().min(1).default(10),
         backupEnabled: zod_1.z.boolean().default(true)
-    }),
+    }).default({}),
     output: zod_1.z.object({
         format: zod_1.z.enum(['yaml', 'json']).default('yaml'),
         prettyPrint: zod_1.z.boolean().default(true),
         includeComments: zod_1.z.boolean().default(true),
         validateOutput: zod_1.z.boolean().default(true),
         generateReport: zod_1.z.boolean().default(true)
-    }),
+    }).default({}),
     github: zod_1.z.object({
         enabled: zod_1.z.boolean().default(false),
         autoCreatePR: zod_1.z.boolean().default(false),

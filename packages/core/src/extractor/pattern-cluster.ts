@@ -139,10 +139,13 @@ export class PatternClusterer {
   private preprocessEvents(events: SessionEvent[], options: Required<PatternClusterOptions>): SessionEvent[] {
     return events
       .filter(event => {
-        // 过滤语言焦点
-        if (options.languageFocus.length > 0 && event.payload?.language) {
+        // 过滤语言焦点：如果事件有语言信息，检查是否在焦点范围内
+        if (options.languageFocus.length > 0) {
+          const eventLang = event.payload?.language;
+          // 如果没有语言信息，保留事件（可能是其他类型的事件）
+          if (!eventLang) return true;
           return options.languageFocus.some(lang => 
-            event.payload.language.toLowerCase().includes(lang)
+            eventLang.toLowerCase().includes(lang)
           );
         }
         return true;

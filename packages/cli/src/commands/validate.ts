@@ -8,6 +8,7 @@ import path from 'path';
 import { RuleValidator } from '@ruleforge/core';
 import { logger } from '../utils/logger.js';
 import { renderValidationTable } from '../utils/table.js';
+import yaml from 'js-yaml';
 
 /**
  * validate 命令处理函数
@@ -38,11 +39,10 @@ export async function validateCommand(file: string, options: {
     const content = await fs.readFile(filePath, 'utf-8');
     
     // 解析 YAML
-    const yaml = require('js-yaml');
-    let rule;
+    let rule: Record<string, unknown>;
     
     try {
-      rule = yaml.load(content);
+      rule = yaml.load(content) as Record<string, unknown>;
     } catch (error) {
       throw new Error(`YAML 解析失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
@@ -57,12 +57,13 @@ export async function validateCommand(file: string, options: {
     const result = validator.validate(rule, validationOptions);
     
     // 显示验证结果
+    const meta = rule['meta'] as Record<string, unknown> | undefined;
     const validationTable = renderValidationTable([{
-      ruleId: rule.meta?.id || '未知',
+      ruleId: (meta?.['id'] as string) || '未知',
       valid: result.valid,
       errors: result.errors,
       warnings: result.warnings,
-      description: rule.meta?.description || '无描述'
+      description: (meta?.['description'] as string) || '无描述'
     }]);
     
     console.log(validationTable);

@@ -151,7 +151,7 @@ export class RuleExtractor {
     return this.patternClusterer.cluster(events, {
       minOccurrences: options.applicableScenes ?? 2,
       minConfidence: options.minConfidence ?? 0.7,
-      languageFocus: options.language ? [options.language] : undefined,
+      languageFocus: options.language ? [options.language] : ['typescript', 'javascript', 'vue', 'python'],
       enableDebugLog: options.enableDebugLog ?? false
     });
   }

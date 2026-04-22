@@ -8,7 +8,7 @@ import { ValidationResult } from '../types/rule';
  * RuleForge 配置结构定义
  */
 export declare const RuleForgeConfigSchema: z.ZodObject<{
-    extraction: z.ZodObject<{
+    extraction: z.ZodDefault<z.ZodObject<{
         minConfidence: z.ZodDefault<z.ZodNumber>;
         applicableScenes: z.ZodDefault<z.ZodNumber>;
         logPath: z.ZodDefault<z.ZodString>;
@@ -26,8 +26,8 @@ export declare const RuleForgeConfigSchema: z.ZodObject<{
         applicableScenes?: number | undefined;
         logPath?: string | undefined;
         maxFileSize?: number | undefined;
-    }>;
-    privacy: z.ZodObject<{
+    }>>;
+    privacy: z.ZodDefault<z.ZodObject<{
         autoRedact: z.ZodDefault<z.ZodBoolean>;
         allowedPatterns: z.ZodDefault<z.ZodArray<z.ZodString, "many">>;
         projectName: z.ZodDefault<z.ZodString>;
@@ -45,8 +45,8 @@ export declare const RuleForgeConfigSchema: z.ZodObject<{
         allowedPatterns?: string[] | undefined;
         redactApiKeys?: boolean | undefined;
         redactPaths?: boolean | undefined;
-    }>;
-    storage: z.ZodObject<{
+    }>>;
+    storage: z.ZodDefault<z.ZodObject<{
         localRulesDir: z.ZodDefault<z.ZodString>;
         cacheEnabled: z.ZodDefault<z.ZodBoolean>;
         cacheTTL: z.ZodDefault<z.ZodNumber>;
@@ -64,8 +64,8 @@ export declare const RuleForgeConfigSchema: z.ZodObject<{
         cacheTTL?: number | undefined;
         maxVersions?: number | undefined;
         backupEnabled?: boolean | undefined;
-    }>;
-    output: z.ZodObject<{
+    }>>;
+    output: z.ZodDefault<z.ZodObject<{
         format: z.ZodDefault<z.ZodEnum<["yaml", "json"]>>;
         prettyPrint: z.ZodDefault<z.ZodBoolean>;
         includeComments: z.ZodDefault<z.ZodBoolean>;
@@ -83,7 +83,7 @@ export declare const RuleForgeConfigSchema: z.ZodObject<{
         validateOutput?: boolean | undefined;
         prettyPrint?: boolean | undefined;
         generateReport?: boolean | undefined;
-    }>;
+    }>>;
     github: z.ZodOptional<z.ZodObject<{
         enabled: z.ZodDefault<z.ZodBoolean>;
         autoCreatePR: z.ZodDefault<z.ZodBoolean>;
@@ -136,34 +136,34 @@ export declare const RuleForgeConfigSchema: z.ZodObject<{
         labels: string[];
     } | undefined;
 }, {
-    extraction: {
+    extraction?: {
         minConfidence?: number | undefined;
         languageFocus?: string[] | undefined;
         applicableScenes?: number | undefined;
         logPath?: string | undefined;
         maxFileSize?: number | undefined;
-    };
-    privacy: {
+    } | undefined;
+    privacy?: {
         projectName?: string | undefined;
         autoRedact?: boolean | undefined;
         allowedPatterns?: string[] | undefined;
         redactApiKeys?: boolean | undefined;
         redactPaths?: boolean | undefined;
-    };
-    storage: {
+    } | undefined;
+    storage?: {
         localRulesDir?: string | undefined;
         cacheEnabled?: boolean | undefined;
         cacheTTL?: number | undefined;
         maxVersions?: number | undefined;
         backupEnabled?: boolean | undefined;
-    };
-    output: {
+    } | undefined;
+    output?: {
         format?: "yaml" | "json" | undefined;
         includeComments?: boolean | undefined;
         validateOutput?: boolean | undefined;
         prettyPrint?: boolean | undefined;
         generateReport?: boolean | undefined;
-    };
+    } | undefined;
     github?: {
         enabled?: boolean | undefined;
         autoCreatePR?: boolean | undefined;

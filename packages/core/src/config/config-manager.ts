@@ -16,7 +16,7 @@ export const RuleForgeConfigSchema = z.object({
     logPath: z.string().default('.ruleforge/logs'),
     languageFocus: z.array(z.string()).default(['typescript', 'javascript', 'vue', 'python']),
     maxFileSize: z.number().int().min(1024).default(10 * 1024 * 1024) // 10MB
-  }),
+  }).default({}),
   
   privacy: z.object({
     autoRedact: z.boolean().default(true),
@@ -24,7 +24,7 @@ export const RuleForgeConfigSchema = z.object({
     projectName: z.string().default('{project_name}'),
     redactApiKeys: z.boolean().default(true),
     redactPaths: z.boolean().default(true)
-  }),
+  }).default({}),
   
   storage: z.object({
     localRulesDir: z.string().default('.ruleforge/rules'),
@@ -32,7 +32,7 @@ export const RuleForgeConfigSchema = z.object({
     cacheTTL: z.number().int().min(60).default(2 * 60 * 60), // 2小时
     maxVersions: z.number().int().min(1).default(10),
     backupEnabled: z.boolean().default(true)
-  }),
+  }).default({}),
   
   output: z.object({
     format: z.enum(['yaml', 'json']).default('yaml'),
@@ -40,7 +40,7 @@ export const RuleForgeConfigSchema = z.object({
     includeComments: z.boolean().default(true),
     validateOutput: z.boolean().default(true),
     generateReport: z.boolean().default(true)
-  }),
+  }).default({}),
   
   github: z.object({
     enabled: z.boolean().default(false),

@@ -165,7 +165,9 @@ async function main(): Promise<void> {
 export { createProgram, registerCommands };
 
 // 如果是直接运行，则执行主函数
-if (import.meta.url === `file://${process.argv[1]}`) {
+const scriptPath = process.argv[1]?.replace(/\\/g, '/');
+const importUrl = import.meta.url.replace('file:///', '').replace('file://', '');
+if (scriptPath && (importUrl.includes(scriptPath) || importUrl.endsWith(scriptPath))) {
   main().catch(error => {
     logger.error('CLI 启动失败:', error);
     process.exit(1);

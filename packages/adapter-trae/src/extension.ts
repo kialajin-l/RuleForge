@@ -45,6 +45,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // 初始化引擎
     engine = new RuleForgeEngine();
     
+    // 加载配置（使用默认配置，避免 Zod 验证失败）
+    await engine.initialize().catch((error) => {
+      log(`配置加载失败，使用默认配置: ${error instanceof Error ? error.message : '未知错误'}`, 'warn');
+    });
+    
     // 设置会话日志路径
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (workspaceFolder) {
