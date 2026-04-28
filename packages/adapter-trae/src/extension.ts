@@ -1,358 +1,416 @@
 /**
- * RuleForge for Trae/VSCode 插件入口
- * 
- * 功能：
- * - 监听文件保存事件，自动记录开发会话日志
- * - 提供规则提取命令
- * - 显示候选规则确认面板
- * - 支持一键贡献至开源社区
+ * RuleForge for Trae/VSCode - Plugin Entry (v1.0)
+ *
+ * Core loop: Record -> Analyze -> Extract -> Confirm -> Save -> Inject
+ *
+ * Features:
+ * - Session log recording (file save events)
+ * - Auto-trigger extraction (save threshold + idle detection)
+ * - Manual extraction command
+ * - Candidate rule confirmation panel
+ * - Rule injection into AI context (.ruleforge/rules.md)
  */
 
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { RuleForgeEngine, RuleWithConfidence } from '@ruleforge/core';
+import { RuleForgeEngine, RuleYAML } from '@ruleforge/core';
 import { showConfirmationPanel } from './ui/confirmation-panel';
+import { RuleForgeConfig } from './config/ruleforge-config';
+import { RuleInjector } from './bridge/rule-injector';
 
 /**
- * 输出通道
+ * Output channel
  */
 let outputChannel: vscode.OutputChannel;
 
 /**
- * RuleForge 引擎实例
+ * Core engine instance
  */
 let engine: RuleForgeEngine;
 
 /**
- * 会话日志存储路径
+ * Plugin configuration
+ */
+let config: RuleForgeConfig;
+
+/**
+ * Rule injector
+ */
+let ruleInjector: RuleInjector;
+
+/**
+ * Session log storage path
  */
 let sessionLogPath: string;
 
 /**
- * 插件激活函数
- * 
- * @param context - VSCode 扩展上下文
+ * Auto-trigger state
+ */
+let saveCount = 0;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+let isExtracting = false;
+
+/**
+ * Activate plugin
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  // 初始化输出通道
   outputChannel = vscode.window.createOutputChannel('RuleForge');
   context.subscriptions.push(outputChannel);
-  
-  log('RuleForge 插件激活中...');
-  
+
+  log('RuleForge v1.0 activating...');
+
   try {
-    // 初始化引擎
+    // Initialize engine
     engine = new RuleForgeEngine();
-    
-    // 加载配置（使用默认配置，避免 Zod 验证失败）
-    await engine.initialize().catch((error) => {
-      log(`配置加载失败，使用默认配置: ${error instanceof Error ? error.message : '未知错误'}`, 'warn');
-    });
-    
-    // 设置会话日志路径
+
+    // Load project config
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (workspaceFolder) {
-      sessionLogPath = path.join(workspaceFolder.uri.fsPath, '.ruleforge', 'logs');
+      const workspaceRoot = workspaceFolder.uri.fsPath;
+      config = new RuleForgeConfig(workspaceRoot);
+      await config.load();
+
+      // Set session log path from config
+      sessionLogPath = config.getLogDir();
       await fs.mkdir(sessionLogPath, { recursive: true });
-      log(`会话日志路径: ${sessionLogPath}`);
+      log('Session log path: ' + sessionLogPath);
+
+      // Initialize rule injector
+      ruleInjector = new RuleInjector(engine, config, workspaceRoot, outputChannel);
+
+      // Sync rules to conventions file on startup
+      await ruleInjector.syncToConventionsFile();
     } else {
-      sessionLogPath = path.join(process.env.HOME || process.env.USERPROFILE || '', '.ruleforge', 'logs');
+      // Fallback without workspace
+      sessionLogPath = path.join(
+        context.globalStorageUri.fsPath,
+        'logs'
+      );
       await fs.mkdir(sessionLogPath, { recursive: true });
-      log(`使用全局日志路径: ${sessionLogPath}`);
+      log('No workspace open, using global storage: ' + sessionLogPath);
     }
-    
-    // 注册命令
-    const extractCommand = vscode.commands.registerCommand('ruleforge.extract', handleExtractCommand);
-    context.subscriptions.push(extractCommand);
-    
-    const showRulesCommand = vscode.commands.registerCommand('ruleforge.showRules', handleShowRulesCommand);
-    context.subscriptions.push(showRulesCommand);
-    
-    const contributeRuleCommand = vscode.commands.registerCommand('ruleforge.contributeRule', handleContributeRuleCommand);
-    context.subscriptions.push(contributeRuleCommand);
-    
-    // 监听文件保存事件
-    const onDidSaveDisposable = vscode.workspace.onDidSaveTextDocument(handleDocumentSave);
-    context.subscriptions.push(onDidSaveDisposable);
-    
-    // 监听工作区变化
-    const onDidChangeWorkspaceDisposable = vscode.workspace.onDidChangeWorkspaceFolders(handleWorkspaceChange);
-    context.subscriptions.push(onDidChangeWorkspaceDisposable);
-    
-    log('RuleForge 插件激活完成');
-    vscode.window.showInformationMessage('RuleForge 已激活，自动记录开发会话');
-    
+
+    // Initialize engine (with error tolerance)
+    await engine.initialize().catch((error) => {
+      log('Config load failed, using defaults: ' + (error instanceof Error ? error.message : 'unknown'), 'warn');
+    });
+
+    // Register commands
+    registerCommands(context);
+
+    // Register file save listener
+    registerFileSaveListener(context);
+
+    log('RuleForge v1.0 activated successfully');
+
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : '未知错误';
-    log(`激活失败: ${errorMessage}`, 'error');
-    vscode.window.showErrorMessage(`RuleForge 激活失败: ${errorMessage}`);
+    log('Activation failed: ' + (error instanceof Error ? error.message : 'unknown'), 'error');
   }
 }
 
 /**
- * 插件停用函数
- * 
- * @param context - VSCode 扩展上下文
+ * Register all commands
  */
-export function deactivate(context: vscode.ExtensionContext): void {
-  log('RuleForge 插件停用');
-  outputChannel.dispose();
-}
+function registerCommands(context: vscode.ExtensionContext): void {
+  // Manual extract command
+  const extractCmd = vscode.commands.registerCommand('ruleforge.extract', async () => {
+    await runExtraction(true);
+  });
+  context.subscriptions.push(extractCmd);
 
-/**
- * 处理规则提取命令
- */
-async function handleExtractCommand(): Promise<void> {
-  log('开始执行规则提取命令');
-  
-  try {
-    // 显示进度
-    await vscode.window.withProgress({
-      location: vscode.ProgressLocation.Notification,
-      title: 'RuleForge 提取规则中...',
-      cancellable: false
-    }, async (progress) => {
-      progress.report({ increment: 0, message: '读取会话日志...' });
-      
-      // 获取日志文件
-      const logFiles = await getRecentLogFiles();
-      if (logFiles.length === 0) {
-        vscode.window.showWarningMessage('未找到会话日志文件');
-        return;
-      }
-      
-      progress.report({ increment: 30, message: `分析 ${logFiles.length} 个日志文件...` });
-      
-      // 提取规则
-      const allRules: RuleWithConfidence[] = [];
-      for (const logFile of logFiles) {
-        try {
-          const result = await engine.extractOnly({
-            sessionId: path.basename(logFile),
-            logPath: logFile,
-            minConfidence: 0.7
-          });
-          allRules.push(...result.rules);
-        } catch (error) {
-          log(`提取规则失败: ${logFile}`, 'warn');
-        }
-      }
-      
-      progress.report({ increment: 40, message: `发现 ${allRules.length} 个候选规则` });
-      
-      if (allRules.length === 0) {
-        vscode.window.showInformationMessage('未发现可复用的规则');
-        return;
-      }
-      
-      progress.report({ increment: 20, message: '验证规则...' });
-      
-      // 验证规则
-      const validationResults = engine.validateOnly(allRules);
-      const validRules = allRules.filter((_, index) => validationResults[index]?.valid);
-      
-      progress.report({ increment: 10, message: '显示确认面板...' });
-      
-      // 显示确认面板
-      if (validRules.length > 0) {
-        await showConfirmationPanel(validRules);
+  // View rules command
+  const viewRulesCmd = vscode.commands.registerCommand('ruleforge.viewRules', async () => {
+    await showRulesQuickPick();
+  });
+  context.subscriptions.push(viewRulesCmd);
+
+  // Sync rules command
+  const syncCmd = vscode.commands.registerCommand('ruleforge.syncRules', async () => {
+    if (ruleInjector) {
+      const synced = await ruleInjector.syncToConventionsFile();
+      if (synced) {
+        vscode.window.showInformationMessage('RuleForge: Rules synced to conventions file');
       } else {
-        vscode.window.showInformationMessage('所有候选规则验证失败');
+        vscode.window.showInformationMessage('RuleForge: No rules to sync');
       }
-    });
-    
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : '未知错误';
-    log(`规则提取失败: ${errorMessage}`, 'error');
-    vscode.window.showErrorMessage(`规则提取失败: ${errorMessage}`);
-  }
+    }
+  });
+  context.subscriptions.push(syncCmd);
 }
 
 /**
- * 处理显示规则命令
+ * Register file save listener with auto-trigger
  */
-async function handleShowRulesCommand(): Promise<void> {
-  log('显示本地规则库');
-  
-  try {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      vscode.window.showWarningMessage('请先打开工作区');
+function registerFileSaveListener(context: vscode.ExtensionContext): void {
+  const listener = vscode.workspace.onDidSaveTextDocument(async (document) => {
+    // Skip non-code files
+    if (!isCodeFile(document.fileName)) {
       return;
     }
-    
-    const rulesDir = path.join(workspaceFolder.uri.fsPath, '.ruleforge', 'rules');
-    const files = await fs.readdir(rulesDir);
-    const yamlFiles = files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-    
-    if (yamlFiles.length === 0) {
-      vscode.window.showInformationMessage('本地规则库为空');
-      return;
-    }
-    
-    // 显示规则列表
-    const selected = await vscode.window.showQuickPick(yamlFiles, {
-      placeHolder: '选择要查看的规则',
-      title: 'RuleForge 本地规则库'
-    });
-    
-    if (selected) {
-      const rulePath = path.join(rulesDir, selected);
-      const document = await vscode.workspace.openTextDocument(rulePath);
-      await vscode.window.showTextDocument(document);
-    }
-    
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : '未知错误';
-    log(`显示规则失败: ${errorMessage}`, 'error');
-    vscode.window.showErrorMessage(`显示规则失败: ${errorMessage}`);
-  }
-}
 
-/**
- * 处理贡献规则命令
- */
-async function handleContributeRuleCommand(): Promise<void> {
-  log('贡献规则至开源社区');
-  
-  try {
-    const config = vscode.workspace.getConfiguration('ruleforge');
-    const defaultRepo = config.get<string>('defaultRepo', 'multiagent/rules');
-    
-    const repo = await vscode.window.showInputBox({
-      prompt: '输入目标 GitHub 仓库',
-      value: defaultRepo,
-      placeHolder: 'owner/repo'
-    });
-    
-    if (!repo) {
-      return;
-    }
-    
-    // TODO: 实现贡献逻辑
-    vscode.window.showInformationMessage(`规则将贡献至: ${repo}`);
-    log(`贡献规则至: ${repo}`);
-    
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : '未知错误';
-    log(`贡献规则失败: ${errorMessage}`, 'error');
-    vscode.window.showErrorMessage(`贡献规则失败: ${errorMessage}`);
-  }
-}
-
-/**
- * 处理文档保存事件
- * 
- * @param document - 保存的文档
- */
-async function handleDocumentSave(document: vscode.TextDocument): Promise<void> {
-  try {
-    // 检查是否启用自动触发
-    const config = vscode.workspace.getConfiguration('ruleforge');
-    const autoTrigger = config.get<boolean>('autoTrigger', true);
-    
-    if (!autoTrigger) {
-      return;
-    }
-    
-    // 记录文件保存事件到会话日志
-    const logEntry = {
+    // Record to session log
+    await appendToSessionLog({
+      type: 'file_save',
       timestamp: new Date().toISOString(),
-      event: 'file_save',
-      file: document.uri.fsPath,
+      fileName: document.fileName,
       language: document.languageId,
       lineCount: document.lineCount
-    };
-    
-    await appendToSessionLog(logEntry);
-    
-  } catch (error) {
-    // 静默失败，不影响用户操作
-    log(`记录文件保存失败: ${error instanceof Error ? error.message : '未知错误'}`, 'warn');
-  }
+    });
+
+    // Auto-trigger logic
+    if (config) {
+      const autoConfig = config.getSection('autoTrigger');
+      if (autoConfig.enabled) {
+        saveCount++;
+
+        // Reset idle timer
+        resetIdleTimer(autoConfig.idleMinutes);
+
+        // Check save threshold
+        if (saveCount >= autoConfig.saveThreshold) {
+          log('Save threshold reached (' + saveCount + '/' + autoConfig.saveThreshold + '), triggering extraction...');
+          saveCount = 0;
+          await runExtraction(false);
+        }
+      }
+    }
+  });
+
+  context.subscriptions.push({ dispose: () => listener.dispose() });
 }
 
 /**
- * 处理工作区变化
- * 
- * @param event - 工作区变化事件
+ * Reset the idle detection timer
  */
-async function handleWorkspaceChange(event: vscode.WorkspaceFoldersChangeEvent): Promise<void> {
-  if (event.added.length > 0) {
-    const newWorkspace = event.added[0];
-    sessionLogPath = path.join(newWorkspace.uri.fsPath, '.ruleforge', 'logs');
-    await fs.mkdir(sessionLogPath, { recursive: true });
-    log(`工作区变化，更新日志路径: ${sessionLogPath}`);
+function resetIdleTimer(idleMinutes: number): void {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+  }
+
+  idleTimer = setTimeout(async () => {
+    log('Idle timeout reached (' + idleMinutes + ' min), triggering extraction...');
+    saveCount = 0;
+    await runExtraction(false);
+  }, idleMinutes * 60 * 1000);
+}
+
+/**
+ * Run rule extraction from session logs
+ */
+async function runExtraction(manual: boolean): Promise<void> {
+  if (isExtracting) {
+    if (manual) {
+      vscode.window.showInformationMessage('RuleForge: Extraction already in progress');
+    }
+    return;
+  }
+
+  isExtracting = true;
+
+  try {
+    if (manual) {
+      vscode.window.showInformationMessage('RuleForge: Starting rule extraction...');
+    }
+
+    // Get recent log files (last 7 days)
+    const logFiles = await getRecentLogFiles();
+    if (logFiles.length === 0) {
+      if (manual) {
+        vscode.window.showInformationMessage('RuleForge: No session logs found');
+      }
+      return;
+    }
+
+    // Extract rules from each log file
+    const allRules: RuleYAML[] = [];
+    const minConfidence = config
+      ? config.getSection('extraction').minConfidence
+      : 0.7;
+
+    for (const logFile of logFiles) {
+      try {
+        const result = await engine.extractOnly({
+          sessionId: path.basename(logFile, path.extname(logFile)),
+          logPath: logFile,
+          minConfidence
+        });
+
+        if (result && result.rules) {
+          allRules.push(...result.rules);
+        }
+      } catch (error) {
+        log('Extraction failed for ' + logFile + ': ' + (error instanceof Error ? error.message : 'unknown'), 'warn');
+      }
+    }
+
+    if (allRules.length === 0) {
+      if (manual) {
+        vscode.window.showInformationMessage('RuleForge: No rules found in session logs');
+      }
+      return;
+    }
+
+    // Deduplicate rules by ID
+    const uniqueRules = deduplicateRules(allRules);
+
+    log('Found ' + uniqueRules.length + ' candidate rule(s)');
+
+    // Show confirmation panel
+    const rulesDir = config ? config.getRulesDir() : path.join(
+      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '',
+      '.ruleforge', 'rules'
+    );
+
+    const results = await showConfirmationPanel(
+      uniqueRules,
+      engine,
+      rulesDir,
+      // onSaved callback: sync rules to conventions file
+      async () => {
+        if (ruleInjector) {
+          await ruleInjector.syncToConventionsFile();
+        }
+      }
+    );
+
+    const savedCount = results.filter(r => r.action === 'save').length;
+    if (savedCount > 0) {
+      log('User saved ' + savedCount + ' rule(s)');
+    }
+
+  } catch (error) {
+    log('Extraction failed: ' + (error instanceof Error ? error.message : 'unknown'), 'error');
+    if (manual) {
+      vscode.window.showErrorMessage('RuleForge: Extraction failed');
+    }
+  } finally {
+    isExtracting = false;
   }
 }
 
 /**
- * 获取最近的日志文件
- * 
- * @returns 日志文件路径数组
+ * Show rules in quick pick
+ */
+async function showRulesQuickPick(): Promise<void> {
+  if (!config) {
+    vscode.window.showWarningMessage('RuleForge: No project config found');
+    return;
+  }
+
+  const rulesDir = config.getRulesDir();
+  try {
+    const files = await fs.readdir(rulesDir);
+    const yamlFiles = files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+
+    if (yamlFiles.length === 0) {
+      vscode.window.showInformationMessage('RuleForge: No rules saved yet');
+      return;
+    }
+
+    const items = yamlFiles.map(f => ({
+      label: f.replace(/.(yaml|yml)$/, ''),
+      description: f
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+      placeHolder: 'Select a rule to view'
+    });
+
+    if (selected) {
+      const filePath = path.join(rulesDir, selected.description);
+      const doc = await vscode.workspace.openTextDocument(filePath);
+      await vscode.window.showTextDocument(doc);
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage('RuleForge: Failed to list rules');
+  }
+}
+
+/**
+ * Check if file is a code file
+ */
+function isCodeFile(fileName: string): boolean {
+  const codeExtensions = [
+    '.ts', '.tsx', '.js', '.jsx', '.vue', '.py', '.java',
+    '.go', '.rs', '.cpp', '.c', '.h', '.cs', '.rb', '.php',
+    '.swift', '.kt', '.scala', '.html', '.css', '.scss', '.json'
+  ];
+  const ext = path.extname(fileName).toLowerCase();
+  return codeExtensions.includes(ext);
+}
+
+/**
+ * Deduplicate rules by ID
+ */
+function deduplicateRules(rules: RuleYAML[]): RuleYAML[] {
+  const seen = new Map<string, RuleYAML>();
+  for (const rule of rules) {
+    const existing = seen.get(rule.meta.id);
+    if (!existing || rule.confidence > existing.confidence) {
+      seen.set(rule.meta.id, rule);
+    }
+  }
+  return Array.from(seen.values());
+}
+
+/**
+ * Get recent log files (last 7 days)
  */
 async function getRecentLogFiles(): Promise<string[]> {
   try {
     const files = await fs.readdir(sessionLogPath);
-    const jsonlFiles = files
-      .filter(f => f.endsWith('.jsonl'))
-      .map(f => path.join(sessionLogPath, f));
-    
-    // 按修改时间排序，返回最近 7 天的文件
+    const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
+
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const recentFiles: string[] = [];
-    
+
     for (const file of jsonlFiles) {
-      const stats = await fs.stat(file);
+      const filePath = path.join(sessionLogPath, file);
+      const stats = await fs.stat(filePath);
       if (stats.mtimeMs > sevenDaysAgo) {
-        recentFiles.push(file);
+        recentFiles.push(filePath);
       }
     }
-    
+
     return recentFiles.sort((a, b) => {
       const statA = fs.stat(a);
       const statB = fs.stat(b);
       return Promise.all([statA, statB]).then(([a, b]) => b.mtimeMs - a.mtimeMs);
     });
-    
+
   } catch (error) {
-    log(`获取日志文件失败: ${error instanceof Error ? error.message : '未知错误'}`, 'warn');
+    log('Failed to get log files: ' + (error instanceof Error ? error.message : 'unknown'), 'warn');
     return [];
   }
 }
 
 /**
- * 追加到会话日志
- * 
- * @param entry - 日志条目
+ * Append entry to session log
  */
 async function appendToSessionLog(entry: Record<string, unknown>): Promise<void> {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const logFile = path.join(sessionLogPath, `session-${today}.jsonl`);
-    
+    const logFile = path.join(sessionLogPath, 'session-' + today + '.jsonl');
+
     const logLine = JSON.stringify(entry) + '\n';
     await fs.appendFile(logFile, logLine, 'utf-8');
-    
+
   } catch (error) {
-    log(`写入会话日志失败: ${error instanceof Error ? error.message : '未知错误'}`, 'warn');
+    log('Failed to write session log: ' + (error instanceof Error ? error.message : 'unknown'), 'warn');
   }
 }
 
 /**
- * 输出日志
- * 
- * @param message - 日志消息
- * @param level - 日志级别
+ * Output log message
  */
 function log(message: string, level: 'info' | 'warn' | 'error' = 'info'): void {
   const timestamp = new Date().toISOString();
-  const prefix = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : 'ℹ️';
-  const logMessage = `[${timestamp}] ${prefix} ${message}`;
-  
+  const prefix = level === 'error' ? '[ERROR]' : level === 'warn' ? '[WARN]' : '[INFO]';
+  const logMessage = timestamp + ' ' + prefix + ' [RuleForge] ' + message;
+
   outputChannel.appendLine(logMessage);
-  
+
   if (level === 'error') {
     console.error(logMessage);
   } else if (level === 'warn') {
@@ -360,4 +418,15 @@ function log(message: string, level: 'info' | 'warn' | 'error' = 'info'): void {
   } else {
     console.log(logMessage);
   }
+}
+
+/**
+ * Deactivate plugin
+ */
+export function deactivate(): void {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+  log('RuleForge deactivated');
 }

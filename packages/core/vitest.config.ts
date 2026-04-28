@@ -18,5 +18,8 @@ export default defineConfig({
     alias: {
       '@': './src'
     }
+  },
+  css: {
+    postcss: false
   }
 });

@@ -1,10 +1,17 @@
 /**
  * RuleForge 本地规则库
  * 管理本地规则文件的增删改查和版本控制
+ *
+ * v0.2 变更：
+ * - FilterOptions 新增 scene / priority 过滤
+ * - RuleIndexItem 新增 scene / priority / source 字段
+ * - 新增 DefaultConflictResolver 实现
+ * - importRules 支持原子性导入（可选）
+ * - 新增 exportPackage / importPackage 用于社区共享
  */
 
 import { RuleYAML } from '../types/rule-schema';
-import { ValidationResult } from '../types/rule';
+import { ValidationResult, ConflictResolver, RulePriority } from '../types/rule';
 import { RuleValidator } from '../validator/rule-validator';
 
 /**
@@ -20,6 +27,10 @@ export interface RuleIndexItem {
   language?: string;
   framework?: string;
   tags?: string[];
+  // ── v0.2 新增 ──
+  scene?: string;
+  priority?: RulePriority;
+  source?: string;
 }
 
 /**
@@ -42,6 +53,10 @@ export interface FilterOptions {
   search?: string;
   limit?: number;
   offset?: number;
+  // ── v0.2 新增 ──
+  scene?: string;
+  priority?: RulePriority;
+  source?: string;
 }
 
 /**
@@ -72,12 +87,71 @@ export interface ConflictResult {
 /**
  * 存储选项
  */
+
+/**
+ * 规则包 manifest（v0.2 新增，用于社区共享）
+ */
+export interface RulePackageManifest {
+  formatVersion: string;
+  name: string;
+  version: string;
+  authors: string[];
+  license: string;
+  description: string;
+  rules: string[];
+  created: string;
+  source?: string;
+  dependencies?: Array<{ name: string; version: string }>;
+}
+
+/**
+ * 规则包（v0.2 新增）
+ */
+export interface RulePackage {
+  manifest: RulePackageManifest;
+  rules: RuleYAML[];
+}
+
 export interface StoreOptions {
   rulesDir?: string;
   maxVersions?: number;
   backupEnabled?: boolean;
   autoValidate?: boolean;
   createIndex?: boolean;
+  conflictResolver?: ConflictResolver;
+}
+
+
+/**
+ * 默认冲突解决器
+ * 优先级：global > project > session
+ * 同优先级时，新规则覆盖旧规则（last-write-wins）
+ */
+export class DefaultConflictResolver implements ConflictResolver {
+  private readonly priorityOrder: Record<RulePriority, number> = {
+    global: 3,
+    project: 2,
+    session: 1,
+  };
+
+  resolve(existing: RuleYAML, incoming: RuleYAML): RuleYAML {
+    const existingPriority = this.getPriority(existing);
+    const incomingPriority = this.getPriority(incoming);
+    const existingWeight = this.priorityOrder[existingPriority];
+    const incomingWeight = this.priorityOrder[incomingPriority];
+
+    if (incomingWeight > existingWeight) {
+      return incoming;
+    } else if (incomingWeight < existingWeight) {
+      return existing;
+    } else {
+      return incoming;
+    }
+  }
+
+  getPriority(rule: RuleYAML): RulePriority {
+    return rule.priority ?? 'project';
+  }
 }
 
 export class RuleStore {
@@ -88,6 +162,7 @@ export class RuleStore {
   private createIndex: boolean;
   private validator: RuleValidator;
   private index: RuleIndex | null = null;
+  private conflictResolver: ConflictResolver;
 
   constructor(options: StoreOptions = {}) {
     this.rulesDir = options.rulesDir || '.ruleforge/rules';
@@ -96,6 +171,7 @@ export class RuleStore {
     this.autoValidate = options.autoValidate ?? true;
     this.createIndex = options.createIndex ?? true;
     this.validator = new RuleValidator();
+    this.conflictResolver = options.conflictResolver ?? new DefaultConflictResolver();
   }
 
   /**
@@ -465,9 +541,9 @@ export class RuleStore {
   }
 
   /**
-   * 检测冲突
+   * 检测冲突（v0.2: 升级为 public）
    */
-  private async detectConflicts(newRule: RuleYAML): Promise<ConflictResult> {
+  async detectConflicts(newRule: RuleYAML): Promise<ConflictResult> {
     const conflicts: ConflictResult['conflicts'] = [];
     
     // 检查 ID 冲突
@@ -502,7 +578,8 @@ export class RuleStore {
       suggestions: conflicts.length > 0 ? [
         '考虑修改规则 ID',
         '合并相似的规则',
-        '添加更具体的触发条件'
+        '添加更具体的触发条件',
+        '设置不同的优先级（priority）以区分规则层级'
       ] : []
     };
   }
@@ -519,10 +596,90 @@ export class RuleStore {
              existingRule.meta.id !== rule.meta.id;
     });
   }
+  /**
+   * 原子性批量导入（v0.2 新增）
+   */
+  async importRulesAtomic(rules: RuleYAML[]): Promise<{
+    total: number;
+    success: number;
+    failed: number;
+    errors: Array<{ ruleId: string; error: string }>;
+  }> {
+    const result = { total: rules.length, success: 0, failed: 0, errors: [] as Array<{ ruleId: string; error: string }> };
+    // Phase 1: validate all
+    for (const rule of rules) {
+      if (this.autoValidate) {
+        const validation = this.validator.validate(rule);
+        if (!validation.valid) {
+          result.failed++;
+          result.errors.push({ ruleId: rule.meta.id, error: validation.errors.join(', ') });
+        }
+      }
+    }
+    if (result.failed > 0) {
+      return result; // atomic: don't write anything
+    }
+    // Phase 2: write all
+    for (const rule of rules) {
+      try {
+        await this.save(rule);
+        result.success++;
+      } catch (error) {
+        result.failed++;
+        result.errors.push({ ruleId: rule.meta.id, error: error instanceof Error ? error.message : '未知错误' });
+      }
+    }
+    return result;
+  }
 
   /**
-   * 创建备份
+   * 导出规则包（v0.2 新增）
    */
+  async exportPackage(
+    name: string,
+    version: string,
+    authors: string[],
+    filters?: FilterOptions
+  ): Promise<RulePackage> {
+    const rules = await this.list(filters);
+    const manifest: RulePackageManifest = {
+      formatVersion: '0.2',
+      name,
+      version,
+      authors,
+      license: 'MIT',
+      description: `RuleForge rule package: ${name}`,
+      rules: rules.map(r => r.meta.id),
+      created: new Date().toISOString(),
+    };
+    return { manifest, rules };
+  }
+
+  /**
+   * 导入规则包（v0.2 新增）
+   */
+  async importPackage(pkg: RulePackage, atomic?: boolean): Promise<{
+    total: number;
+    success: number;
+    failed: number;
+    errors: Array<{ ruleId: string; error: string }>;
+  }> {
+    if (atomic) {
+      return this.importRulesAtomic(pkg.rules);
+    }
+    const result = { total: pkg.rules.length, success: 0, failed: 0, errors: [] as Array<{ ruleId: string; error: string }> };
+    for (const rule of pkg.rules) {
+      try {
+        await this.save(rule);
+        result.success++;
+      } catch (error) {
+        result.failed++;
+        result.errors.push({ ruleId: rule.meta.id, error: error instanceof Error ? error.message : '未知错误' });
+      }
+    }
+    return result;
+  }
+
   private async createBackup(rule: RuleYAML): Promise<void> {
     try {
       const fs = await import('fs/promises');

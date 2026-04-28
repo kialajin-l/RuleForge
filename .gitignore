@@ -35,10 +35,18 @@ lerna-debug.log*
 *.sw?
 
 # RuleForge specific
-.ruleforge/rules/
+.ruleforge/
 *.vsix
 demo/demo-session.jsonl
 demo/demo-report.json
 
+# Electron (experimental)
+electron/
+package-electron.json
+next.config.js
+nightshift-integration-types.ts
+
 # OS files
 Thumbs.db
+scripts/build-electron.js
+scripts/packager.js

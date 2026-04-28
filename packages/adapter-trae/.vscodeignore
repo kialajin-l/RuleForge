@@ -1,3 +1,8 @@
+# 排除所有父目录内容
+../**
+../../**
+
+# 排除源文件
 .vscode/
 .vscode-test/
 src/
@@ -5,15 +10,19 @@ tsconfig.json
 .eslintrc.json
 .gitignore
 package-lock.json
+
+# 排除 node_modules
 node_modules/**/*
+
+# 排除 TypeScript 源文件和 map 文件
 **/*.map
 **/*.ts
+
+# 排除隐藏文件
 **/.*
-!.vscodeignore
-!dist/**/*
+
+# 只包含必要的文件
 !dist/extension.js
 !images/**/*
-!LICENSE
-!README.md
-../**
-!../.ruleforge.yaml
+!LICENSE.txt
+!package.json

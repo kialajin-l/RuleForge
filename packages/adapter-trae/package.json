@@ -3,7 +3,7 @@
         "configuration": {
             "properties": {
                 "ruleforge.autoTrigger": {
-                    "description": "Automatically suggest rule extraction on session end",
+                    "description": "Automatically extract rules when save threshold or idle timeout is reached",
                     "default": true,
                     "type": "boolean"
                 },
@@ -19,6 +19,14 @@
             {
                 "command": "ruleforge.extract",
                 "title": "RuleForge: Extract Rules from Session"
+            },
+            {
+                "command": "ruleforge.viewRules",
+                "title": "RuleForge: View Local Rules"
+            },
+            {
+                "command": "ruleforge.syncRules",
+                "title": "RuleForge: Sync Rules to AI Context"
             }
         ]
     },
@@ -28,10 +36,13 @@
         "watch": "npm run build -- --watch"
     },
     "description": "Extract and share coding rules from your Trae sessions",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "activationEvents": [
         "onLanguage",
-        "onCommand:ruleforge.extract"
+        "onCommand:ruleforge.extract",
+        "onCommand:ruleforge.viewRules",
+        "onCommand:ruleforge.syncRules",
+        "onStartupFinished"
     ],
     "engines": {
         "trae": "^1.0.0",
@@ -47,7 +58,8 @@
         "@ruleforge/core": "file:../core",
         "@types/vscode": "^1.85.0",
         "@vscode/vsce": "^3.9.1",
-        "esbuild": "^0.20.0"
+        "esbuild": "^0.20.0",
+        "js-yaml": "^4.1.0"
     },
     "displayName": "RuleForge for Trae"
 }

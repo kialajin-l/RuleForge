@@ -1,371 +1,194 @@
 /**
- * RuleForge 确认面板 UI 组件
- * 
- * 功能：
- * - 显示候选规则列表
- * - 提供"分享"/"本地保存"/"稍后"按钮
- * - 处理用户选择并执行相应操作
+ * RuleForge Confirmation Panel
+ * Displays candidate rules and handles save/skip actions.
  */
 
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { RuleWithConfidence } from '@ruleforge/core';
+import { RuleForgeEngine, RuleYAML } from '@ruleforge/core';
 
 /**
- * 用户操作选项
+ * User action options
  */
 export enum RuleAction {
-  Share = 'share',
-  SaveLocal = 'save_local',
-  Later = 'later'
+  Save = 'save',
+  Skip = 'skip'
 }
 
 /**
- * 规则操作结果
+ * Rule action result
  */
 export interface RuleActionResult {
-  rule: RuleWithConfidence;
+  rule: RuleYAML;
   action: RuleAction;
 }
 
 /**
- * 显示确认面板
- * 
- * @param rules - 候选规则列表
- * @returns 用户操作结果数组
+ * Show confirmation panel for candidate rules
  */
-export async function showConfirmationPanel(rules: RuleWithConfidence[]): Promise<RuleActionResult[]> {
+export async function showConfirmationPanel(
+  rules: RuleYAML[],
+  engine: RuleForgeEngine,
+  rulesDir: string,
+  onSaved?: () => Promise<void>
+): Promise<RuleActionResult[]> {
   if (rules.length === 0) {
-    vscode.window.showInformationMessage('没有候选规则需要确认');
+    vscode.window.showInformationMessage('No candidate rules to review');
     return [];
   }
 
-  // 创建 Webview 面板
   const panel = vscode.window.createWebviewPanel(
     'ruleforge.confirmation',
-    'RuleForge - 候选规则确认',
+    'RuleForge - Candidate Rules',
     vscode.ViewColumn.One,
-    {
-      enableScripts: true,
-      retainContextWhenHidden: true
-    }
+    { enableScripts: true, retainContextWhenHidden: true }
   );
 
-  // 设置 Webview 内容
   panel.webview.html = getWebviewContent(rules);
 
-  // 处理消息
   const results: RuleActionResult[] = [];
   const messagePromise = new Promise<RuleActionResult[]>((resolve) => {
     const disposable = panel.webview.onDidReceiveMessage(async (message) => {
       switch (message.command) {
         case 'action':
-          results.push({
-            rule: rules[message.index],
-            action: message.action
-          });
+          results.push({ rule: rules[message.index], action: message.action });
           break;
         case 'done':
           disposable.dispose();
+          panel.dispose();
           resolve(results);
+          break;
+        case 'cancel':
+          disposable.dispose();
+          panel.dispose();
+          resolve([]);
           break;
       }
     });
-
-    // 面板关闭时 resolve
-    panel.onDidDispose(() => {
-      disposable.dispose();
-      resolve(results);
-    });
   });
 
-  // 等待用户操作
   const actionResults = await messagePromise;
-  panel.dispose();
-
-  // 处理结果
-  await processResults(actionResults);
-
+  const saveResults = actionResults.filter(r => r.action === RuleAction.Save);
+  if (saveResults.length > 0) {
+    await handleSaveRules(saveResults, engine, rulesDir, onSaved);
+  }
   return actionResults;
 }
 
 /**
- * 获取 Webview HTML 内容
- * 
- * @param rules - 候选规则列表
- * @returns HTML 字符串
+ * Handle rule saving via core engine
  */
-function getWebviewContent(rules: RuleWithConfidence[]): string {
-  const rulesHtml = rules.map((rule, index) => `
-    <div class="rule-card" data-index="${index}">
-      <div class="rule-header">
-        <h3>${escapeHtml(rule.meta.name)}</h3>
-        <span class="confidence-badge" style="background-color: ${getConfidenceColor(rule.confidence)}">
-          ${(rule.confidence * 100).toFixed(0)}%
-        </span>
-      </div>
-      <p class="rule-description">${escapeHtml(rule.meta.description || '无描述')}</p>
-      <div class="rule-meta">
-        <span class="meta-item">📁 ${escapeHtml(rule.compatibility.languages.join(', '))}</span>
-        <span class="meta-item">🔧 ${escapeHtml(rule.compatibility.frameworks?.join(', ') || '无')}</span>
-      </div>
-      <div class="rule-actions">
-        <button class="btn btn-share" onclick="handleAction(${index}, 'share')">
-          🌐 分享
-        </button>
-        <button class="btn btn-save" onclick="handleAction(${index}, 'save_local')">
-          💾 本地保存
-        </button>
-        <button class="btn btn-later" onclick="handleAction(${index}, 'later')">
-          ⏰ 稍后
-        </button>
-      </div>
-    </div>
-  `).join('');
-
-  return `
-    <!DOCTYPE html>
-    <html lang="zh-CN">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>RuleForge 确认面板</title>
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          padding: 20px;
-          background-color: var(--vscode-editor-background);
-          color: var(--vscode-editor-foreground);
-        }
-        h1 {
-          font-size: 24px;
-          margin-bottom: 20px;
-          border-bottom: 1px solid var(--vscode-panel-border);
-          padding-bottom: 10px;
-        }
-        .rule-card {
-          background-color: var(--vscode-editor-inactiveSelectionBackground);
-          border: 1px solid var(--vscode-panel-border);
-          border-radius: 8px;
-          padding: 16px;
-          margin-bottom: 16px;
-        }
-        .rule-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 8px;
-        }
-        .rule-header h3 {
-          margin: 0;
-          font-size: 18px;
-        }
-        .confidence-badge {
-          padding: 4px 8px;
-          border-radius: 12px;
-          color: white;
-          font-size: 12px;
-          font-weight: bold;
-        }
-        .rule-description {
-          margin: 8px 0;
-          color: var(--vscode-descriptionForeground);
-        }
-        .rule-meta {
-          display: flex;
-          gap: 16px;
-          margin: 12px 0;
-          font-size: 14px;
-        }
-        .meta-item {
-          background-color: var(--vscode-badge-background);
-          color: var(--vscode-badge-foreground);
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-        }
-        .rule-actions {
-          display: flex;
-          gap: 8px;
-          margin-top: 12px;
-        }
-        .btn {
-          padding: 8px 16px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 14px;
-          transition: background-color 0.2s;
-        }
-        .btn:hover {
-          opacity: 0.9;
-        }
-        .btn-share {
-          background-color: #0066CC;
-          color: white;
-        }
-        .btn-save {
-          background-color: #28a745;
-          color: white;
-        }
-        .btn-later {
-          background-color: #6c757d;
-          color: white;
-        }
-        .summary {
-          margin-top: 20px;
-          padding: 16px;
-          background-color: var(--vscode-editor-inactiveSelectionBackground);
-          border-radius: 8px;
-          text-align: center;
-        }
-      </style>
-    </head>
-    <body>
-      <h1>🔍 发现 ${rules.length} 个可复用规则</h1>
-      ${rulesHtml}
-      <div class="summary">
-        <button class="btn btn-share" onclick="done()" style="width: 200px;">
-          ✅ 完成
-        </button>
-      </div>
-      <script>
-        const vscode = acquireVsCodeApi();
-        
-        function handleAction(index, action) {
-          vscode.postMessage({
-            command: 'action',
-            index: index,
-            action: action
-          });
-          
-          // 视觉反馈
-          const card = document.querySelector(\`.rule-card[data-index="\${index}"]\`);
-          card.style.opacity = '0.5';
-          card.querySelector('.rule-actions').innerHTML = '<span style="color: #28a745;">✓ 已处理</span>';
-        }
-        
-        function done() {
-          vscode.postMessage({
-            command: 'done'
-          });
-        }
-      </script>
-    </body>
-    </html>
-  `;
-}
-
-/**
- * 处理用户操作结果
- * 
- * @param results - 操作结果数组
- */
-async function processResults(results: RuleActionResult[]): Promise<void> {
-  const shareRules = results.filter(r => r.action === RuleAction.Share);
-  const saveLocalRules = results.filter(r => r.action === RuleAction.SaveLocal);
-
-  // 处理分享
-  if (shareRules.length > 0) {
-    await handleShareRules(shareRules);
-  }
-
-  // 处理本地保存
-  if (saveLocalRules.length > 0) {
-    await handleSaveLocalRules(saveLocalRules);
-  }
-
-  // 显示总结
-  const summary = [];
-  if (shareRules.length > 0) {
-    summary.push(`${shareRules.length} 个规则将分享`);
-  }
-  if (saveLocalRules.length > 0) {
-    summary.push(`${saveLocalRules.length} 个规则已本地保存`);
-  }
-  if (summary.length > 0) {
-    vscode.window.showInformationMessage(`RuleForge: ${summary.join('，')}`);
-  }
-}
-
-/**
- * 处理规则分享
- * 
- * @param results - 要分享的规则结果
- */
-async function handleShareRules(results: RuleActionResult[]): Promise<void> {
-  // TODO: 实现分享逻辑
-  // 1. 生成 YAML 文件
-  // 2. 创建 GitHub PR
-  // 3. 通知用户
-  
-  console.log('分享规则:', results.map(r => r.rule.meta.id));
-}
-
-/**
- * 处理规则本地保存
- * 
- * @param results - 要本地保存的规则结果
- */
-async function handleSaveLocalRules(results: RuleActionResult[]): Promise<void> {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  if (!workspaceFolder) {
-    vscode.window.showWarningMessage('请先打开工作区');
-    return;
-  }
-
-  const rulesDir = path.join(workspaceFolder.uri.fsPath, '.ruleforge', 'rules');
+async function handleSaveRules(
+  results: RuleActionResult[],
+  engine: RuleForgeEngine,
+  rulesDir: string,
+  onSaved?: () => Promise<void>
+): Promise<void> {
   await fs.mkdir(rulesDir, { recursive: true });
-
+  let savedCount = 0;
   for (const result of results) {
     try {
-      const rule = result.rule;
-      const fileName = `${rule.meta.id}.yaml`;
-      const filePath = path.join(rulesDir, fileName);
-
-      // TODO: 使用 RuleForgeEngine 格式化规则
-      const yamlContent = `# RuleForge 规则
-# ID: ${rule.meta.id}
-# 名称: ${rule.meta.name}
-# 置信度: ${(rule.confidence * 100).toFixed(0)}%
-
-# 规则内容待实现
-`;
-
-      await fs.writeFile(filePath, yamlContent, 'utf-8');
-      console.log(`保存规则: ${filePath}`);
+      await engine.saveRule(result.rule);
+      savedCount++;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      console.error(`保存规则失败: ${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      vscode.window.showErrorMessage('Failed to save rule: ' + errorMessage);
     }
   }
-}
-
-/**
- * 获取置信度颜色
- * 
- * @param confidence - 置信度值 (0-1)
- * @returns 颜色字符串
- */
-function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.8) {
-    return '#28a745'; // 绿色
-  } else if (confidence >= 0.6) {
-    return '#ffc107'; // 黄色
-  } else {
-    return '#dc3545'; // 红色
+  if (savedCount > 0) {
+    vscode.window.showInformationMessage(
+      'RuleForge: Saved ' + savedCount + ' rule' + (savedCount > 1 ? 's' : '') + ' to local library'
+    );
+    if (onSaved) { await onSaved(); }
   }
 }
 
 /**
- * 转义 HTML 特殊字符
- * 
- * @param text - 原始文本
- * @returns 转义后的文本
+ * Generate Webview HTML content
  */
+function getWebviewContent(rules: RuleYAML[]): string {
+  const rulesHtml = rules.map((rule, index) => {
+    const confidence = Math.round(rule.confidence * 100);
+    const confidenceColor = getConfidenceColor(rule.confidence);
+    const conditions = (rule.rule.conditions || [])
+      .map(c => '<li>' + (c.negated ? '\u274c' : '\u2705') + ' <code>' + escapeHtml(c.condition) + '</code></li>')
+      .join('');
+    const suggestions = (rule.rule.suggestions || [])
+      .map(s => '<li>' + escapeHtml(s.description) + (s.code ? '<pre><code>' + escapeHtml(s.code) + '</code></pre>' : '') + '</li>')
+      .join('');
+    return '<div class="rule-card">' +
+      '<div class="rule-header"><h3>' + escapeHtml(rule.meta.name) + '</h3>' +
+      '<span class="confidence" style="background-color:' + confidenceColor + '">' + confidence + '%</span></div>' +
+      '<p class="description">' + escapeHtml(rule.meta.description) + '</p>' +
+      '<div class="meta"><span>ID: ' + escapeHtml(rule.meta.id) + '</span>' +
+      '<span>Version: ' + escapeHtml(rule.meta.version) + '</span>' +
+      '<span>Languages: ' + (rule.compatibility.languages || []).join(', ') + '</span></div>' +
+      (conditions ? '<div class="conditions"><strong>Conditions:</strong><ul>' + conditions + '</ul></div>' : '') +
+      (suggestions ? '<div class="suggestions"><strong>Suggestions:</strong><ul>' + suggestions + '</ul></div>' : '') +
+      '<div class="actions">' +
+      '<button class="btn-save" onclick="handleAction(' + index + ', 'save')">Save</button>' +
+      '<button class="btn-skip" onclick="handleAction(' + index + ', 'skip')">Skip</button>' +
+      '</div></div>';
+  }).join('');
+
+  const css = [
+    'body{font-family:var(--vscode-font-family);padding:20px;color:var(--vscode-foreground)}',
+    'h2{margin-bottom:20px}',
+    '.rule-card{border:1px solid var(--vscode-widget-border);border-radius:8px;padding:16px;margin-bottom:16px;background:var(--vscode-editor-background)}',
+    '.rule-header{display:flex;justify-content:space-between;align-items:center}',
+    '.rule-header h3{margin:0}',
+    '.confidence{padding:4px 8px;border-radius:4px;color:white;font-weight:bold;font-size:12px}',
+    '.description{color:var(--vscode-descriptionForeground);margin:8px 0}',
+    '.meta{font-size:12px;color:var(--vscode-descriptionForeground);margin-bottom:8px}',
+    '.meta span{margin-right:16px}',
+    '.conditions,.suggestions{margin:8px 0}',
+    '.conditions ul,.suggestions ul{margin:4px 0;padding-left:20px}',
+    '.actions{margin-top:12px;display:flex;gap:8px}',
+    '.btn-save,.btn-skip{padding:6px 16px;border:none;border-radius:4px;cursor:pointer;font-size:13px}',
+    '.btn-save{background:var(--vscode-button-background);color:var(--vscode-button-foreground)}',
+    '.btn-save:hover{background:var(--vscode-button-hoverBackground)}',
+    '.btn-skip{background:var(--vscode-secondaryButton-background);color:var(--vscode-secondaryButton-foreground)}',
+    '.btn-skip:hover{background:var(--vscode-secondaryButton-hoverBackground)}',
+    'pre{background:var(--vscode-textCodeBlock-background);padding:8px;border-radius:4px;overflow-x:auto}',
+    'code{font-family:var(--vscode-editor-font-family)}'
+  ].join('');
+
+  const js = [
+    'const vscode = acquireVsCodeApi();',
+    'const totalRules = ' + rules.length + ';',
+    'let processedCount = 0;',
+    'function handleAction(index, action) {',
+    '  vscode.postMessage({ command: "action", index, action });',
+    '  processedCount++;',
+    '  if (processedCount >= totalRules) { vscode.postMessage({ command: "done" }); }',
+    '}',
+    'function saveAll() {',
+    '  for (let i = 0; i < totalRules; i++) { vscode.postMessage({ command: "action", index: i, action: "save" }); }',
+    '  vscode.postMessage({ command: "done" });',
+    '}',
+    'function skipAll() { vscode.postMessage({ command: "cancel" }); }'
+  ].join('');
+
+  return '<!DOCTYPE html><html lang="en"><head>' +
+    '<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>RuleForge - Candidate Rules</title>' +
+    '<style>' + css + '</style></head><body>' +
+    '<h2>RuleForge - Candidate Rules (' + rules.length + ' found)</h2>' +
+    '<p>Review the extracted rules below. Save rules you want to keep in your local rule library.</p>' +
+    '<div id="rules">' + rulesHtml + '</div>' +
+    '<div style="margin-top:20px;display:flex;gap:8px">' +
+    '<button class="btn-save" onclick="saveAll()">Save All</button>' +
+    '<button class="btn-skip" onclick="skipAll()">Skip All</button></div>' +
+    '<script>' + js + '</script></body></html>';
+}
+
+function getConfidenceColor(confidence: number): string {
+  if (confidence >= 0.8) return '#28a745';
+  if (confidence >= 0.6) return '#ffc107';
+  return '#dc3545';
+}
+
 function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
