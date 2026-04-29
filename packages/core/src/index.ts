@@ -486,6 +486,22 @@ export type { RuleTemplate, TemplateParams } from './templates/index';
 export type { RuleYAML, RuleTrigger, RuleCondition } from './types/rule-schema';
 export type { ValidationOptions } from './validator/rule-validator';
 export type { FormatOptions, FormatResult } from './formatter/yaml-formatter';
+export { RuleEngine } from './engine/rule-engine';
+export { RuleStats } from './engine/rule-stats';
+export type {
+  FileChangeEvent,
+  EngineMatchResult,
+  RuleDiagnostic,
+  RuleEngineConfig,
+  RuleEngineEvent,
+  RuleEngineEventListener,
+} from './engine/types';
+export {
+  DiagnosticSeverity,
+  DiagnosticTag,
+  DEFAULT_ENGINE_CONFIG,
+} from './engine/types';
+
 
 // 导出类型定义
 export type {

@@ -1,0 +1,30 @@
+{
+  "name": "@ruleforge/mcp",
+  "version": "1.0.0",
+  "description": "RuleForge MCP Server — 将规则引擎能力暴露为标准 MCP tools",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@ruleforge/core": "file:../core",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "ruleforge-mcp": "dist/index.js"
+  },
+  "license": "MIT"
+}

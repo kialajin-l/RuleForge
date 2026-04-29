@@ -127,8 +127,8 @@ function getWebviewContent(rules: RuleYAML[]): string {
       (conditions ? '<div class="conditions"><strong>Conditions:</strong><ul>' + conditions + '</ul></div>' : '') +
       (suggestions ? '<div class="suggestions"><strong>Suggestions:</strong><ul>' + suggestions + '</ul></div>' : '') +
       '<div class="actions">' +
-      '<button class="btn-save" onclick="handleAction(' + index + ', 'save')">Save</button>' +
-      '<button class="btn-skip" onclick="handleAction(' + index + ', 'skip')">Skip</button>' +
+      '<button class="btn-save" onclick="handleAction(' + index + ', \'save\')">Save</button>' +
+      '<button class="btn-skip" onclick="handleAction(' + index + ', \'skip\')">Skip</button>' +
       '</div></div>';
   }).join('');
 

@@ -53,3 +53,12 @@ scripts/packager.js
 
 # Build output
 packages/*/dist/
+
+# Temp scripts & test artifacts
+_rewrite.mjs
+gen-mcp.js
+test-mcp-client.mjs
+packages/.test-rf-home/
+
+# Experimental / not ready
+packages/vscode/
