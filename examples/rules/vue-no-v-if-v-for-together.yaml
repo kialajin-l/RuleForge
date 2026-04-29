@@ -1,0 +1,48 @@
+schemaVersion: "0.2.0"
+
+meta:
+  id: vue-no-v-if-v-for-together
+  name: 禁止 v-if 和 v-for 同时使用
+  version: "1.0.0"
+  description: Vue 模板中不应在同一元素上同时使用 v-if 和 v-for
+  authors: ["ruleforge-team"]
+  license: MIT
+  created: "2026-04-29T00:00:00Z"
+  updated: "2026-04-29T00:00:00Z"
+  source: local
+  tags: [vue, template, performance]
+  scene: coding
+
+rule:
+  trigger:
+    type: file_pattern
+    pattern: "**/*.vue"
+    file_types: [vue]
+    context: Vue 模板
+  conditions:
+    - type: code_contains
+      condition: "v-if.*v-for|v-for.*v-if"
+      negated: false
+      description: 同一元素同时使用 v-if 和 v-for
+  suggestions:
+    - type: code_fix
+      description: 将 v-if 移到外层容器或使用 computed 过滤
+      code: |
+        <!-- ❌ 不推荐 -->
+        <li v-for="item in items" v-if="item.active">{{ item.name }}</li>
+
+        <!-- ✅ 推荐：用 computed 过滤 -->
+        <li v-for="item in activeItems">{{ item.name }}</li>
+
+        <!-- ✅ 推荐：用 template 包裹 -->
+        <template v-for="item in items">
+          <li v-if="item.active">{{ item.name }}</li>
+        </template>
+
+compatibility:
+  languages: [typescript, javascript]
+  frameworks: [vue]
+  scenes: [coding]
+
+priority: project
+confidence: 0.92

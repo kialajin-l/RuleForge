@@ -1,0 +1,50 @@
+schemaVersion: "0.2.0"
+
+meta:
+  id: general-console-log-cleanup
+  name: 清理调试用 console.log
+  version: "1.0.0"
+  description: 生产代码中不应保留调试用的 console.log 语句
+  authors: ["ruleforge-team"]
+  license: MIT
+  created: "2026-04-29T00:00:00Z"
+  updated: "2026-04-29T00:00:00Z"
+  source: local
+  tags: [cleanup, debugging, best-practice]
+  scene: coding
+
+rule:
+  trigger:
+    type: file_pattern
+    pattern: "**/*.{ts,tsx,js,jsx}"
+    file_types: [typescript, javascript]
+    context: 前端/后端代码
+  conditions:
+    - type: code_contains
+      condition: 'console\.log\('
+      negated: false
+      description: 包含 console.log 调用
+  suggestions:
+    - type: code_fix
+      description: 移除调试日志，或使用正式的日志库
+      code: |
+        // ❌ 调试代码
+        console.log('debug:', userData);
+        console.log('response:', response.data);
+
+        // ✅ 使用结构化日志
+        import { logger } from './logger';
+        logger.debug('User data loaded', { userId: userData.id });
+
+        // ✅ 或使用条件编译
+        if (process.env.NODE_ENV === 'development') {
+          console.log('debug:', userData);
+        }
+
+compatibility:
+  languages: [typescript, javascript]
+  frameworks: [react, vue, angular, node, express, next]
+  scenes: [coding]
+
+priority: session
+confidence: 0.80

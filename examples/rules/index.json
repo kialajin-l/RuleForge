@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "description": "RuleForge 示例规则集 — 开箱即用的编码规范",
+  "rules": [
+    {
+      "id": "typescript-no-any",
+      "name": "禁止使用 any 类型",
+      "scene": "coding",
+      "file": "typescript-no-any.yaml"
+    },
+    {
+      "id": "react-no-inline-styles",
+      "name": "避免 React 内联样式",
+      "scene": "coding",
+      "file": "react-no-inline-styles.yaml"
+    },
+    {
+      "id": "vue-no-v-if-v-for-together",
+      "name": "禁止 v-if 和 v-for 同时使用",
+      "scene": "coding",
+      "file": "vue-no-v-if-v-for-together.yaml"
+    },
+    {
+      "id": "python-no-bare-except",
+      "name": "禁止裸 except 子句",
+      "scene": "coding",
+      "file": "python-no-bare-except.yaml"
+    },
+    {
+      "id": "general-console-log-cleanup",
+      "name": "清理调试用 console.log",
+      "scene": "coding",
+      "file": "general-console-log-cleanup.yaml"
+    }
+  ]
+}

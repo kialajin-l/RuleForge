@@ -50,3 +50,6 @@ nightshift-integration-types.ts
 Thumbs.db
 scripts/build-electron.js
 scripts/packager.js
+
+# Build output
+packages/*/dist/

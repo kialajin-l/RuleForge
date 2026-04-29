@@ -1,0 +1,54 @@
+schemaVersion: "0.2.0"
+
+meta:
+  id: typescript-no-any
+  name: 禁止使用 any 类型
+  version: "1.0.0"
+  description: TypeScript 代码中不应使用 any 类型，应使用具体类型或 unknown
+  authors: ["ruleforge-team"]
+  license: MIT
+  created: "2026-04-29T00:00:00Z"
+  updated: "2026-04-29T00:00:00Z"
+  source: local
+  tags: [typescript, type-safety, best-practice]
+  scene: coding
+
+rule:
+  trigger:
+    type: file_pattern
+    pattern: "**/*.ts"
+    file_types: [typescript]
+    context: TypeScript 类型定义
+  conditions:
+    - type: code_contains
+      condition: ': any[\s\),;]|: any$'
+      negated: false
+      description: 变量或参数使用了 any 类型注解
+    - type: code_contains
+      condition: "<any>"
+      negated: false
+      description: 泛型使用了 any
+  suggestions:
+    - type: code_fix
+      description: 使用 unknown 替代 any，或定义具体类型
+      code: |
+        // ❌ 不推荐
+        function processData(data: any) { return data; }
+
+        // ✅ 推荐
+        interface DataPayload { id: number; name: string; }
+        function processData(data: DataPayload) { return data; }
+
+        // ✅ 如果类型确实未知，用 unknown
+        function safeProcess(data: unknown) {
+          if (typeof data === 'string') return data.toUpperCase();
+          return data;
+        }
+
+compatibility:
+  languages: [typescript]
+  frameworks: [react, vue, angular, node]
+  scenes: [coding]
+
+priority: project
+confidence: 0.95

@@ -33,31 +33,45 @@ export async function showCommand(ruleId: string, options: {
     // 显示基本信息
     logger.newline();
     logger.subtitle('基本信息');
-    
-    const basicInfo = {
+
+    const basicInfo: Record<string, unknown> = {
       '规则ID': rule.meta.id,
       '规则名称': rule.meta.name,
       '版本': rule.meta.version,
+      'Schema版本': rule.schemaVersion || '0.1',
       '描述': rule.meta.description || '无描述',
       '作者': rule.meta.authors?.join(', ') || '未知',
+      '许可证': rule.meta.license || '无',
       '创建时间': new Date(rule.meta.created).toLocaleString('zh-CN'),
       '更新时间': new Date(rule.meta.updated).toLocaleString('zh-CN'),
-      '置信度': rule.confidence
+      '置信度': rule.confidence,
+      '优先级': rule.priority || 'project'
     };
-    
+
+    // v0.2 新增字段
+    if (rule.meta.scene) basicInfo['场景'] = rule.meta.scene;
+    if (rule.meta.tags?.length) basicInfo['标签'] = rule.meta.tags.join(', ');
+    if (rule.meta.source) basicInfo['来源'] = rule.meta.source;
+    if (rule.meta.forked_from) basicInfo['Fork来源'] = rule.meta.forked_from;
+
     console.log(renderKeyValueTable(basicInfo));
-    
+
     // 显示兼容性信息
     logger.newline();
     logger.subtitle('兼容性信息');
-    
-    const compatibilityInfo = {
+
+    const compatibilityInfo: Record<string, unknown> = {
       '支持语言': rule.compatibility.languages.join(', '),
       '支持框架': rule.compatibility.frameworks?.join(', ') || '无',
+      '支持工具': rule.compatibility.tools?.join(', ') || '无',
       '最低版本': rule.compatibility.min_version || '无限制',
       '最高版本': rule.compatibility.max_version || '无限制'
     };
-    
+
+    if (rule.compatibility.scenes?.length) {
+      compatibilityInfo['适用场景'] = rule.compatibility.scenes.join(', ');
+    }
+
     console.log(renderKeyValueTable(compatibilityInfo));
     
     // 显示规则内容

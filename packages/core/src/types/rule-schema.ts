@@ -104,6 +104,11 @@ export const RuleSchema = z.object({
   confidence: z.number().min(0).max(1, '置信度必须在0-1之间'),
   // ── v0.2 新增：优先级（可选，默认 "project"）──
   priority: RulePrioritySchema.optional(),
+  // ── v0.2 新增：依赖与冲突声明 ──
+  /** 本规则依赖的其他规则 ID 列表 */
+  depends_on: z.array(z.string()).optional(),
+  /** 与本规则冲突的规则 ID 列表（不能同时启用） */
+  conflicts_with: z.array(z.string()).optional(),
 });
 
 // ─── 导出类型 ───

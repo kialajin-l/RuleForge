@@ -1,0 +1,57 @@
+schemaVersion: "0.2.0"
+
+meta:
+  id: python-no-bare-except
+  name: 禁止裸 except 子句
+  version: "1.0.0"
+  description: Python 代码中不应使用裸 except:，应指定具体异常类型
+  authors: ["ruleforge-team"]
+  license: MIT
+  created: "2026-04-29T00:00:00Z"
+  updated: "2026-04-29T00:00:00Z"
+  source: local
+  tags: [python, error-handling, best-practice]
+  scene: coding
+
+rule:
+  trigger:
+    type: file_pattern
+    pattern: "**/*.py"
+    file_types: [python]
+    context: Python 异常处理
+  conditions:
+    - type: code_contains
+      condition: 'except\s*:'
+      negated: false
+      description: 使用了裸 except 子句
+  suggestions:
+    - type: code_fix
+      description: 指定具体异常类型，或使用 except Exception
+      code: |
+        # ❌ 不推荐
+        try:
+            process_data()
+        except:
+            log_error()
+
+        # ✅ 推荐：指定异常类型
+        try:
+            process_data()
+        except ValueError as e:
+            log_error(f"Invalid value: {e}")
+        except ConnectionError as e:
+            log_error(f"Connection failed: {e}")
+
+        # ✅ 如果必须捕获所有，至少用 Exception
+        try:
+            process_data()
+        except Exception as e:
+            log_error(f"Unexpected error: {e}")
+
+compatibility:
+  languages: [python]
+  frameworks: [fastapi, django, flask]
+  scenes: [coding]
+
+priority: project
+confidence: 0.90

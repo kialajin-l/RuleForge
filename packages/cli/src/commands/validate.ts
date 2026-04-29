@@ -1,14 +1,28 @@
 /**
- * validate 命令：验证 YAML 文件是否符合 REP v0.1
+ * validate 命令：验证 YAML 文件是否符合 REP v0.2
  */
 
-// import { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
 import { RuleValidator } from '@ruleforge/core';
 import { logger } from '../utils/logger.js';
 import { renderValidationTable } from '../utils/table.js';
 import yaml from 'js-yaml';
+
+/**
+ * 获取规则的 schema 版本
+ */
+function getSchemaVersion(rule: Record<string, unknown>): string {
+  return (rule['schemaVersion'] as string) ?? '0.1';
+}
+
+/**
+ * 判断是否为 v0.2+ 格式
+ */
+function isV02(rule: Record<string, unknown>): boolean {
+  const v = getSchemaVersion(rule);
+  return v.startsWith('0.2') || v.startsWith('1.');
+}
 
 /**
  * validate 命令处理函数
@@ -19,7 +33,7 @@ export async function validateCommand(file: string, options: {
 }): Promise<void> {
   const { strict = false, fix = false } = options;
   
-  logger.title('RuleForge 规则验证');
+  logger.title('RuleForge 规则验证 (REP v0.2)');
   
   try {
     // 解析文件路径
@@ -51,6 +65,14 @@ export async function validateCommand(file: string, options: {
       throw new Error('文件内容为空或无效');
     }
     
+    // 检测 schema 版本
+    const schemaVersion = getSchemaVersion(rule);
+    const v02 = isV02(rule);
+    
+    logger.keyValue('Schema 版本', schemaVersion);
+    logger.keyValue('格式类型', v02 ? 'REP v0.2' : 'REP v0.1 (兼容模式)');
+    logger.newline();
+    
     // 验证规则
     const validator = RuleValidator.createStandardValidator();
     const validationOptions = { strict };
@@ -67,6 +89,31 @@ export async function validateCommand(file: string, options: {
     }]);
     
     console.log(validationTable);
+    
+    // 显示 schema 版本信息
+    logger.newline();
+    logger.subtitle('Schema 信息:');
+    logger.keyValue('  版本', schemaVersion);
+    logger.keyValue('  格式', v02 ? 'REP v0.2' : 'REP v0.1');
+    
+    if (v02) {
+      // 显示 v0.2 特有字段
+      const ruleObj = rule as Record<string, unknown>;
+      const metaObj = ruleObj['meta'] as Record<string, unknown> | undefined;
+      
+      if (metaObj?.['scene']) {
+        logger.keyValue('  场景', metaObj['scene']);
+      }
+      if (metaObj?.['tags']) {
+        logger.keyValue('  标签', (metaObj['tags'] as string[]).join(', '));
+      }
+      if (metaObj?.['source']) {
+        logger.keyValue('  来源', metaObj['source']);
+      }
+      if (ruleObj['priority']) {
+        logger.keyValue('  优先级', ruleObj['priority'] as string);
+      }
+    }
     
     // 显示详细错误和警告
     if (result.errors.length > 0) {
@@ -130,32 +177,39 @@ export async function validateCommand(file: string, options: {
 /**
  * 尝试自动修复规则
  */
-async function attemptFix(rule: any, _validationResult: any): Promise<any> {
+async function attemptFix(rule: Record<string, unknown>, _validationResult: unknown): Promise<Record<string, unknown> | null> {
   const fixedRule = { ...rule };
   
   // 修复常见问题
-  if (!fixedRule.meta) {
-    fixedRule.meta = {};
+  if (!fixedRule['meta']) {
+    fixedRule['meta'] = {};
   }
   
-  if (!fixedRule.meta.id) {
-    fixedRule.meta.id = `rule-${Date.now()}`;
+  const meta = fixedRule['meta'] as Record<string, unknown>;
+  
+  if (!meta['id']) {
+    meta['id'] = `rule-${Date.now()}`;
   }
   
-  if (!fixedRule.meta.version) {
-    fixedRule.meta.version = '1.0.0';
+  if (!meta['version']) {
+    meta['version'] = '1.0.0';
   }
   
-  if (!fixedRule.meta.created_at) {
-    fixedRule.meta.created_at = new Date().toISOString();
+  if (!meta['created']) {
+    meta['created'] = new Date().toISOString();
   }
   
-  if (!fixedRule.meta.updated_at) {
-    fixedRule.meta.updated_at = new Date().toISOString();
+  if (!meta['updated']) {
+    meta['updated'] = new Date().toISOString();
   }
   
-  if (!fixedRule.confidence) {
-    fixedRule.confidence = 0.7;
+  if (!fixedRule['confidence']) {
+    fixedRule['confidence'] = 0.7;
+  }
+  
+  // 确保 schemaVersion 存在
+  if (!fixedRule['schemaVersion']) {
+    fixedRule['schemaVersion'] = '0.2';
   }
   
   return fixedRule;
@@ -176,7 +230,7 @@ async function checkFileExists(filePath: string): Promise<boolean> {
 // 导出命令配置（用于测试）
 export const validateCommandConfig = {
   name: 'validate',
-  description: '验证 YAML 文件是否符合 REP v0.1',
+  description: '验证 YAML 文件是否符合 REP v0.2',
   options: [
     { flags: '--strict', description: '严格模式（警告也视为错误）' },
     { flags: '--fix', description: '自动修复可修复的问题' }

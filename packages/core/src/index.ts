@@ -464,6 +464,13 @@ export class RuleForgeEngine {
       }
     };
   }
+
+  /**
+   * 获取规则存储实例（用于匹配器等高级功能）
+   */
+  getStore(): RuleStore {
+    return this.store;
+  }
 }
 
 // 导出各个核心类
@@ -472,34 +479,28 @@ export { RuleValidator } from './validator/rule-validator';
 export { YamlFormatter } from './formatter/yaml-formatter';
 export { ConfigManager } from './config/config-manager';
 export { RuleStore } from './storage/rule-store';
+export { RuleMatcher } from './matcher/rule-matcher';
+export type { MatchContext, MatchResult } from './matcher/rule-matcher';
+export { getTemplates, getTemplate, getTemplatesByCategory, generateFromTemplate, listTemplates } from './templates/index';
+export type { RuleTemplate, TemplateParams } from './templates/index';
+export type { RuleYAML, RuleTrigger, RuleCondition } from './types/rule-schema';
+export type { ValidationOptions } from './validator/rule-validator';
+export type { FormatOptions, FormatResult } from './formatter/yaml-formatter';
 
 // 导出类型定义
-export type { 
-  ExtractionResult, 
-  ValidationResult 
+export type {
+  ExtractionResult
 } from './types/rule';
 
-export type { 
-  RuleYAML 
-} from './types/rule-schema';
-
-export type { 
-  ExtractOptions 
+export type {
+  ExtractOptions
 } from './extractor/rule-extractor';
 
-export type { 
-  ValidationOptions 
-} from './validator/rule-validator';
-
-export type { 
-  FormatOptions 
-} from './formatter/yaml-formatter';
-
-export type { 
-  RuleForgeConfig 
+export type {
+  RuleForgeConfig
 } from './config/config-manager';
 
-export type { 
+export type {
   ImportResult,
   ValidationReport,
   StoreStatistics

@@ -15,13 +15,19 @@ export async function listCommand(options: {
   framework?: string;
   language?: string;
   minConfidence?: string;
+  scene?: string;
+  priority?: string;
+  source?: string;
 }): Promise<void> {
   const {
     format = 'table',
     tag = [],
     framework,
     language,
-    minConfidence
+    minConfidence,
+    scene,
+    priority,
+    source
   } = options;
   
   logger.title('RuleForge 规则列表');
@@ -32,7 +38,7 @@ export async function listCommand(options: {
     await engine.initialize();
     
     // 构建过滤器
-    const filters: any = {};
+    const filters: Record<string, unknown> = {};
     
     if (framework) {
       filters.framework = framework;
@@ -53,6 +59,24 @@ export async function listCommand(options: {
       filters.tags = tag;
       logger.keyValue('标签过滤', tag.join(', '));
     }
+
+    if (scene) {
+      filters.scene = scene;
+      logger.keyValue('场景过滤', scene);
+    }
+
+    if (priority) {
+      if (!['global', 'project', 'session'].includes(priority)) {
+        throw new Error(`无效的优先级: ${priority}（可选: global, project, session）`);
+      }
+      filters.priority = priority;
+      logger.keyValue('优先级过滤', priority);
+    }
+
+    if (source) {
+      filters.source = source;
+      logger.keyValue('来源过滤', source);
+    }
     
     logger.newline();
     
@@ -70,28 +94,46 @@ export async function listCommand(options: {
     
     if (filters.framework) {
       filteredRules = filteredRules.filter(rule => 
-        rule.compatibility.frameworks?.includes(filters.framework)
+        rule.compatibility.frameworks?.includes(filters.framework as string)
       );
     }
     
     if (filters.language) {
       filteredRules = filteredRules.filter(rule => 
-        rule.compatibility.languages.includes(filters.language)
+        rule.compatibility.languages.includes(filters.language as string)
       );
     }
     
     if (filters.minConfidence) {
       filteredRules = filteredRules.filter(rule => 
-        rule.confidence >= filters.minConfidence
+        (rule.confidence ?? 0) >= (filters.minConfidence as number)
       );
     }
     
-    if (filters.tags && filters.tags.length > 0) {
-      // 简单的标签匹配（基于规则名称和描述）
+    if (filters.tags && Array.isArray(filters.tags)) {
+      const tags = filters.tags as string[];
       filteredRules = filteredRules.filter(rule => {
-        const searchText = `${rule.meta.name} ${rule.meta.description}`.toLowerCase();
-        return filters.tags.some((tag: string) => searchText.includes(tag.toLowerCase()));
+        return rule.meta.tags?.some(t => tags.includes(t));
       });
+    }
+
+    if (filters.scene) {
+      filteredRules = filteredRules.filter(rule =>
+        rule.meta.scene === filters.scene ||
+        rule.compatibility.scenes?.includes(filters.scene as string)
+      );
+    }
+
+    if (filters.priority) {
+      filteredRules = filteredRules.filter(rule =>
+        rule.priority === filters.priority
+      );
+    }
+
+    if (filters.source) {
+      filteredRules = filteredRules.filter(rule =>
+        rule.meta.source === filters.source
+      );
     }
     
     if (filteredRules.length === 0) {
@@ -104,10 +146,12 @@ export async function listCommand(options: {
       id: rule.meta.id,
       name: rule.meta.name,
       version: rule.meta.version,
-      confidence: rule.confidence,
-      language: rule.compatibility.languages[0],
-      framework: rule.compatibility.frameworks?.[0],
-      updatedAt: rule.meta.updated
+      confidence: rule.confidence ?? 0,
+      language: rule.compatibility.languages[0] ?? '',
+      framework: rule.compatibility.frameworks?.[0] ?? '',
+      scene: rule.meta.scene ?? '',
+      priority: rule.priority ?? '',
+      updatedAt: rule.meta.updated ?? ''
     }));
     
     // 根据格式输出
@@ -121,10 +165,11 @@ export async function listCommand(options: {
         console.log(JSON.stringify(filteredRules, null, 2));
         break;
         
-      case 'yaml':
-        const yaml = require('js-yaml');
+      case 'yaml': {
+        const yaml = (await import('js-yaml')).default;
         console.log(yaml.dump(filteredRules, { indent: 2 }));
         break;
+      }
         
       default:
         throw new Error(`不支持的格式: ${format}`);
@@ -136,7 +181,7 @@ export async function listCommand(options: {
       
       const statsTable = renderStatsTable({
         totalRules: filteredRules.length,
-        averageConfidence: filteredRules.reduce((sum, r) => sum + r.confidence, 0) / filteredRules.length,
+        averageConfidence: filteredRules.reduce((sum, r) => sum + (r.confidence ?? 0), 0) / filteredRules.length,
         languages: [...new Set(filteredRules.map(r => r.compatibility.languages).flat())],
         frameworks: [...new Set(filteredRules.map(r => r.compatibility.frameworks || []).flat())],
         lastUpdated: new Date().toISOString()
@@ -160,6 +205,9 @@ export const listCommandConfig = {
     { flags: '--tag <tags...>', description: '按标签过滤' },
     { flags: '--framework <fw>', description: '按框架过滤' },
     { flags: '--language <lang>', description: '按语言过滤' },
-    { flags: '--min-confidence <number>', description: '最小置信度' }
+    { flags: '--min-confidence <number>', description: '最小置信度' },
+    { flags: '--scene <scene>', description: '按场景过滤' },
+    { flags: '--priority <priority>', description: '按优先级过滤 (global/project/session)' },
+    { flags: '--source <source>', description: '按来源过滤' }
   ]
 };

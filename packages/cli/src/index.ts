@@ -13,9 +13,13 @@ import { validateCommand } from './commands/validate.js';
 import { listCommand } from './commands/list.js';
 import { showCommand } from './commands/show.js';
 import { deleteCommand } from './commands/delete.js';
+import { exportCommand } from './commands/export.js';
+import { importCommand } from './commands/import.js';
+import { matchCommand } from './commands/match.js';
+import { templateCommand } from './commands/template.js';
 
 // CLI 版本信息
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 
 /**
  * 创建 CLI 程序
@@ -68,7 +72,7 @@ function registerCommands(program: Command): void {
   // validate 命令
   program
     .command('validate <file>')
-    .description('验证 YAML 文件是否符合 REP v0.1')
+    .description('验证 YAML 文件是否符合 REP v0.2')
     .option('--strict', '严格模式（警告也视为错误）')
     .option('--fix', '自动修复可修复的问题')
     .action(validateCommand);
@@ -82,6 +86,9 @@ function registerCommands(program: Command): void {
     .option('--framework <fw>', '按框架过滤')
     .option('--language <lang>', '按语言过滤')
     .option('--min-confidence <number>', '最小置信度')
+    .option('--scene <scene>', '按场景过滤')
+    .option('--priority <priority>', '按优先级过滤 (global/project/session)')
+    .option('--source <source>', '按来源过滤')
     .action(listCommand);
 
   // show 命令
@@ -99,33 +106,69 @@ function registerCommands(program: Command): void {
     .option('--force', '不询问确认')
     .action(deleteCommand);
 
-  // export 命令（暂未实现）
+  // export 命令
   program
     .command('export')
-    .description('导出规则库（功能开发中）')
-    .action(() => {
-      logger.error('export 命令暂未实现，将在后续版本中提供');
-    });
+    .description('导出规则库')
+    .option('--output <path>', '输出文件路径')
+    .option('--scene <scene>', '按场景过滤')
+    .option('--tag <tags...>', '按标签过滤')
+    .option('--priority <priority>', '按优先级过滤 (global/project/session)')
+    .option('--language <lang>', '按语言过滤')
+    .option('--framework <fw>', '按框架过滤')
+    .option('--format <type>', '导出格式 (yaml/json)', 'yaml')
+    .action(exportCommand);
 
-  // import 命令（暂未实现）
+  // import 命令
   program
     .command('import <file>')
-    .description('从导出文件导入规则（功能开发中）')
-    .action(() => {
-      logger.error('import 命令暂未实现，将在后续版本中提供');
-    });
+    .description('从文件导入规则')
+    .option('--strategy <strategy>', '导入策略 (merge/overwrite)', 'merge')
+    .option('--dry-run', '仅显示，不实际导入')
+    .option('--force', '跳过验证')
+    .action(importCommand);
+
+  // match 命令
+  program
+    .command('match')
+    .description('根据代码上下文匹配适用规则')
+    .option('--file <path>', '要匹配的代码文件')
+    .option('--language <lang>', '编程语言')
+    .option('--framework <fw>', '框架')
+    .option('--scene <scene>', '应用场景')
+    .option('--min-conf <number>', '最小置信度', '0.3')
+    .option('--max <number>', '最大返回数量', '10')
+    .option('--json', '输出 JSON 格式')
+    .action(matchCommand);
+
+  // template 命令
+  program
+    .command('template')
+    .description('规则模板管理')
+    .option('--list', '列出所有可用模板')
+    .option('--show <id>', '显示模板详情')
+    .option('--generate <id>', '从模板生成规则')
+    .option('--language <lang>', '编程语言')
+    .option('--framework <fw>', '框架')
+    .option('--output <path>', '输出文件路径')
+    .option('--json', 'JSON 格式输出')
+    .action(templateCommand);
 
   // 添加帮助信息
   program.addHelpText('after', `
 示例:
   $ ruleforge init --force
   $ ruleforge extract --log ./logs/ --min-conf 0.8
+  $ ruleforge match --file src/index.ts --scene coding
+  $ ruleforge match --language typescript --framework react
   $ ruleforge validate rule.yaml --fix
   $ ruleforge list --format table --framework react
+  $ ruleforge list --scene coding --priority global
   $ ruleforge show rule-001 --yaml
   $ ruleforge delete rule-001 --force
-  $ ruleforge export --output my-rules.zip
+  $ ruleforge export --output my-rules.zip --scene coding
   $ ruleforge import rules.zip --strategy merge
+  $ ruleforge import rule.yaml --dry-run
 
 更多信息请访问: https://ruleforge.dev/docs/cli
   `);

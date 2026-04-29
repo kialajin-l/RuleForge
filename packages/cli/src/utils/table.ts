@@ -100,20 +100,20 @@ export function renderRulesTable(rules: any[]): string {
     {
       key: 'name',
       title: '名称',
-      width: 30,
+      width: 25,
       format: (value: string) => chalk.bold(value)
     },
     {
       key: 'version',
       title: '版本',
-      width: 10,
+      width: 8,
       align: 'center',
       format: (value: string) => chalk.green(value)
     },
     {
       key: 'confidence',
       title: '置信度',
-      width: 12,
+      width: 10,
       align: 'right',
       format: (value: number) => {
         if (value >= 0.9) return chalk.green(value.toFixed(2));
@@ -122,24 +122,44 @@ export function renderRulesTable(rules: any[]): string {
       }
     },
     {
+      key: 'scene',
+      title: '场景',
+      width: 12,
+      align: 'center',
+      format: (value: string) => value ? chalk.magenta(value) : chalk.gray('-')
+    },
+    {
+      key: 'priority',
+      title: '优先级',
+      width: 10,
+      align: 'center',
+      format: (value: string) => {
+        if (value === 'global') return chalk.green(value);
+        if (value === 'project') return chalk.blue(value);
+        if (value === 'session') return chalk.yellow(value);
+        return chalk.gray('-');
+      }
+    },
+    {
       key: 'language',
       title: '语言',
-      width: 15,
+      width: 12,
       align: 'center',
       format: (value: string) => chalk.magenta(value || '-')
     },
     {
       key: 'framework',
       title: '框架',
-      width: 15,
+      width: 12,
       align: 'center',
       format: (value: string) => chalk.blue(value || '-')
     },
     {
       key: 'updatedAt',
       title: '更新时间',
-      width: 20,
+      width: 18,
       format: (value: string) => {
+        if (!value) return chalk.gray('-');
         const date = new Date(value);
         return chalk.gray(date.toLocaleDateString('zh-CN'));
       }

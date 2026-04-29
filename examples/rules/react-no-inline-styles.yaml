@@ -1,0 +1,47 @@
+schemaVersion: "0.2.0"
+
+meta:
+  id: react-no-inline-styles
+  name: 避免 React 内联样式
+  version: "1.0.0"
+  description: React 组件应避免大量内联样式，优先使用 CSS Modules 或 styled-components
+  authors: ["ruleforge-team"]
+  license: MIT
+  created: "2026-04-29T00:00:00Z"
+  updated: "2026-04-29T00:00:00Z"
+  source: local
+  tags: [react, css, performance, best-practice]
+  scene: coding
+
+rule:
+  trigger:
+    type: file_pattern
+    pattern: "**/*.tsx"
+    file_types: [typescript, react]
+    context: React 组件
+  conditions:
+    - type: code_contains
+      condition: style={{ 大量内联样式对象
+      negated: false
+  suggestions:
+    - type: code_fix
+      description: 使用 CSS Modules 或 styled-components 替代内联样式
+      code: |
+        // ❌ 不推荐
+        <div style={{ display: 'flex', padding: 16, color: '#333', fontSize: 14 }}>
+
+        // ✅ 推荐：CSS Modules
+        import styles from './Component.module.css';
+        <div className={styles.container}>
+
+        // ✅ 推荐：styled-components
+        const Container = styled.div`display: flex; padding: 16px;`;
+        <Container />
+
+compatibility:
+  languages: [typescript, javascript]
+  frameworks: [react]
+  scenes: [coding]
+
+priority: project
+confidence: 0.85
