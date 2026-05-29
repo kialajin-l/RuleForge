@@ -62,3 +62,6 @@ packages/.test-rf-home/
 
 # Experimental / not ready
 packages/vscode/
+
+# Demo test logs
+packages/core/demo-logs/
