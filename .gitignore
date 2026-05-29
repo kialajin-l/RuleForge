@@ -62,3 +62,6 @@ packages/.test-rf-home/
 
 # Experimental / not ready
 packages/vscode/
+
+# Internal / non-public docs
+docs/internal/
