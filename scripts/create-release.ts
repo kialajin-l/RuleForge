@@ -417,6 +417,13 @@ async function main(): Promise<void> {
     // 2. 配置远程仓库
     await setupRemote(config);
 
+    // 2.5 自动提交未提交的更改（demo 流程可能修改了文件）
+    const status = runCommand('git status --porcelain');
+    if (status) {
+      console.log('📝 检测到未提交的更改，自动提交...');
+      await commitChanges(config);
+    }
+
     // 3. 检查 Git 状态
     await checkGitStatus();
 
