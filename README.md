@@ -27,6 +27,8 @@
 | 🤖 **MCP Server** | 标准 MCP 协议暴露，任何支持 MCP 的 AI Agent 即插即用 |
 | 🔄 **批量处理** | 支持多文件、多会话并行分析 |
 | 💾 **本地规则库** | `~/.ruleforge/rules/` 全局规则存储，跨项目共享 |
+| 🌌 **4D 坐标规则** | 基于宇宙坐标模型的规则约束，自动纠正锚点坐标偏移 |
+| ⚖️ **权重自适应** | 规则权重根据使用效果自动调整，学习率 η=0.2 |
 
 ---
 
@@ -40,7 +42,13 @@ ruleforge/
 │   ├── core/            # @ruleforge/core — 核心引擎
 │   │   ├── storage/     #   规则存储、索引、验证
 │   │   ├── matcher/     #   代码模式匹配器
-│   │   └── extractor/   #   规则提取引擎
+│   │   ├── extractor/   #   规则提取引擎
+│   │   ├── engine/      #   规则执行引擎
+│   │   ├── coordinate/  #   4D 坐标规则引擎（新增）
+│   │   ├── validator/   #   规则验证器
+│   │   ├── formatter/   #   YAML 格式化器
+│   │   ├── config/      #   配置管理
+│   │   └── types/       #   类型定义
 │   ├── cli/             # @ruleforge/cli — 命令行工具
 │   ├── mcp/             # @ruleforge/mcp — MCP Server（AI Agent 集成）
 │   └── adapter-trae/    # ruleforge-adapter-trae — Trae/VSCode 插件
@@ -52,10 +60,42 @@ ruleforge/
 
 | 包名 | 作用 | 谁在用 |
 |------|------|--------|
-| `@ruleforge/core` | 规则存储、验证、匹配、提取 | 所有上层包的基础依赖 |
+| `@ruleforge/core` | 规则存储、验证、匹配、提取、4D 坐标约束 | 所有上层包的基础依赖 |
 | `@ruleforge/cli` | 命令行操作：init / validate / search / match / stats | 开发者在终端使用 |
 | `@ruleforge/mcp` | MCP Server，暴露 5 个标准 tool | AI Agent（Claude、MiMo 等） |
 | `ruleforge-adapter-trae` | 编辑器插件，自动监听会话并提取规则 | Trae / VSCode 用户 |
+
+### 4D 坐标规则模块（新增）
+
+`packages/core/src/coordinate/` 是与 Nexus 宇宙坐标模型对齐的规则约束引擎：
+
+```typescript
+import { CoordinateEngine } from '@ruleforge/core/coordinate';
+
+const engine = new CoordinateEngine();
+
+// 评估锚点坐标是否符合规则
+const results = engine.evaluate(
+  { d1: 0.25, d2: 0.05, d3: 0.5, d4: 0.3 },  // 坐标值
+  { discipline: 'CS', abstraction: 'instance', temporality: 'stable', scale: 'local' },  // 标签
+  false,  // 是否跨学科
+);
+
+// 应用修正
+const corrected = engine.applyCorrections(coords, results);
+
+// 根据效果自适应调整权重
+engine.adaptWeights(results, true);  // true = 规则被采纳
+```
+
+内置四条规则（经 EXP-008 实验验证）：
+
+| 规则 | 条件 | 动作 | 说明 |
+|------|------|------|------|
+| R1 | 抽象层次 = instance | d2 ∈ [0.00, 0.10] | 具体实例的抽象层次应 ≤ 0.10 |
+| R2 | 抽象层次 = method | d2 ∈ [0.20, 0.30] | 方法/技术的抽象层次应在 0.20-0.30 |
+| R3 | 抽象层次 = theory | d2 ∈ [0.45, 0.55] | 理论/原理的抽象层次应在 0.45-0.55 |
+| R4 | 学科 = CS（排除跨学科） | d1 ∈ [0.20, 0.30] | 纯 CS 的学科坐标应在 0.20-0.30 |
 
 ---
 
@@ -63,21 +103,12 @@ ruleforge/
 
 ### 方式一：npm 全局安装 CLI（推荐）
 
-适合希望在终端直接使用 RuleForge 命令的开发者。
-
 ```bash
 npm install -g @ruleforge/cli
-```
-
-安装后可直接使用 `ruleforge` 命令：
-
-```bash
 ruleforge --help
 ```
 
 ### 方式二：项目内安装核心库
-
-适合需要在自己项目中集成 RuleForge 能力的场景。
 
 ```bash
 npm install @ruleforge/core
@@ -99,42 +130,47 @@ const matches = await matcher.match({
 
 ### 方式三：MCP Server（AI Agent 集成）
 
-适合让 AI Agent（Claude Desktop、MiMo、Cursor 等）直接调用规则引擎能力。
-
 ```bash
 npm install -g @ruleforge/mcp
 ```
 
-然后在 MCP 客户端配置中添加：
+在 MCP 客户端配置中添加：
 
 ```json
 {
   "mcpServers": {
     "ruleforge": {
-      "command": "node",
-      "args": ["E:/code/ruleforge/packages/mcp/dist/index.js"],
+      "command": "ruleforge-mcp",
       "env": {
-        "RF_HOME": "C:\\Users\\<你的用户名>\\.ruleforge"
+        "RF_HOME": "C:\Users\<你的用户名>\.ruleforge"
       }
     }
   }
 }
 ```
 
-> 💡 `RF_HOME` 指向规则库目录，默认为 `~/.ruleforge`。可通过环境变量 `RULEFORGE_HOME` 覆盖。
+`RF_HOME` 指向规则库目录，通常可设为 `C:\Users\<your-username>\.ruleforge`，也可以按你的系统环境调整。
+
+源码开发场景也可以直接指向本地构建产物：
+
+```json
+{
+  "mcpServers": {
+    "ruleforge": {
+      "command": "node",
+      "args": ["/path/to/ruleforge/packages/mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+公开仓库中的使用说明和边界约定见 `docs/PUBLIC_DOCS_INDEX.md`。
 
 ### 方式四：Trae / VSCode 插件
 
-适合在编辑器中无感使用 RuleForge 的场景。
-
-1. 在 Trae 或 VSCode 扩展商店搜索 **"RuleForge"**
-2. 安装 `ruleforge-adapter-trae`
-3. 插件会自动监听编码会话，检测到高频模式时弹出提示
-4. 确认后规则自动保存并注入 AI 上下文
+在扩展商店搜索 **"RuleForge"** 安装 `ruleforge-adapter-trae`，插件会自动监听编码会话并提取规则。
 
 ### 方式五：从源码安装
-
-适合贡献代码或需要最新开发版本的场景。
 
 ```bash
 git clone https://github.com/kialajin-l/RuleForge.git
@@ -143,62 +179,21 @@ npm install
 npm run build
 ```
 
-构建完成后，各包的产物在 `packages/<包名>/dist/` 目录。
-
 ---
 
 ## 🚀 使用指南
 
 ### CLI 命令
 
-#### 初始化项目
-
 ```bash
-ruleforge init
+ruleforge init                    # 初始化项目
+ruleforge validate my-rule.yaml   # 验证规则
+ruleforge search --language ts    # 搜索规则
+ruleforge match src/app.ts        # 代码模式匹配
+ruleforge stats                   # 查看统计
 ```
-
-在项目根目录生成 `.ruleforge/` 配置目录，包含 `rules/`（正式规则）和 `candidates/`（候选规则）。
-
-#### 验证规则
-
-```bash
-ruleforge validate .ruleforge/rules/my-rule.yaml
-```
-
-检查规则文件是否符合 REP v0.2 标准，输出验证结果。
-
-#### 搜索规则
-
-```bash
-# 按语言搜索
-ruleforge search --language typescript
-
-# 按标签搜索
-ruleforge search --tags best-practice,logging
-
-# 按关键词搜索
-ruleforge search --keyword "console.log"
-```
-
-#### 代码模式匹配
-
-```bash
-ruleforge match src/app.ts
-```
-
-分析指定文件，返回所有匹配的规则和建议。
-
-#### 查看统计
-
-```bash
-ruleforge stats
-```
-
-输出规则库概览：规则总数、语言分布、优先级分布、热门标签等。
 
 ### MCP Tool（AI Agent 调用）
-
-当 RuleForge MCP Server 运行后，AI Agent 可通过以下 5 个标准 tool 调用规则引擎：
 
 | Tool | 用途 | 参数 |
 |------|------|------|
@@ -207,18 +202,6 @@ ruleforge stats
 | `rf_rules` | 查询/搜索规则库 | `language?`, `tags?`, `keyword?`, `limit?` |
 | `rf_explain` | 查看某条规则的完整详情 | `ruleId` |
 | `rf_stats` | 查看规则库统计概览 | 无 |
-
-**典型交互流程：**
-
-```
-用户: "帮我检查 src/app.ts 有没有违反团队规范的地方"
-  ↓
-AI Agent 调用 rf_suggest({ filePath: "src/app.ts", changeType: "modify" })
-  ↓
-返回: "匹配到 2 条规则：禁止 console.log (56%)、使用严格相等 (45%)"
-  ↓
-AI Agent 在生成代码时自动遵循这些规则
-```
 
 ### 规则文件格式（REP v0.2）
 
@@ -242,7 +225,7 @@ confidence: 0.85         # 0-1，置信度评分
 rule:
   trigger:
     type: code_pattern   # code_pattern | file_pattern | command | git_operation
-    pattern: ': any\\b'
+    pattern: ': any\b'
     file_types: [typescript]
   conditions:
     - type: file_exists
@@ -255,7 +238,7 @@ rule:
 
 compatibility:
   languages: [typescript]
-  frameworks: []         # 可选：vue, react, express 等
+  frameworks: []
 ```
 
 ---
@@ -263,26 +246,19 @@ compatibility:
 ## 📖 使用场景
 
 **场景 1：发现重复代码模式**
-
-当你多次创建类似组件时，RuleForge 会自动识别并提取通用模式。
-
 > 多次创建 Vue 表单组件 → 提取表单验证规则 → AI 下次创建表单时自动遵循
 
 **场景 2：解决同类错误**
-
-多次修复同一类错误后，RuleForge 会生成预防性规则。
-
 > 多次修复 `any` 类型错误 → 提取类型检查规则 → AI 写代码时自动避免 `any`
 
 **场景 3：团队规范沉淀**
-
-将个人最佳实践转化为团队共享规则，通过 MCP Server 分发给所有成员的 AI Agent。
-
 > 代码审查模式 → 提取代码质量规则 → 团队 AI 统一遵循
 
 **场景 4：AI Agent 自主学习**
+> AI Agent 通过 MCP 协议调用 RuleForge，每次代码变更时自动获取相关规则建议
 
-AI Agent 通过 MCP 协议调用 RuleForge，在每次代码变更时自动获取相关规则建议，无需人工干预。
+**场景 5：Nexus 坐标约束**
+> Nexus 提取锚点时，CoordinateEngine 自动检查 4D 坐标是否符合领域规则，纠正偏移
 
 ---
 
@@ -297,60 +273,6 @@ AI Agent 通过 MCP 协议调用 RuleForge，在每次代码变更时自动获�
 | `RULEFORGE_MIN_CONFIDENCE` | `0.7` | 最低置信度阈值 |
 | `RULEFORGE_AUTO_REDACT` | `true` | 自动脱敏开关 |
 
-### `.ruleforge.yaml` 配置文件
-
-```yaml
-extraction:
-  minConfidence: 0.7
-  applicableScenes: 2
-  maxPatterns: 50
-
-privacy:
-  autoRedact: true
-  redactPatterns:
-    - pattern: 'sk-[a-zA-Z0-9]{20,}'
-      replacement: '{api_key}'
-
-storage:
-  localRulesDir: .ruleforge/rules
-  maxVersions: 10
-  autoBackup: true
-
-output:
-  format: yaml
-  prettyPrint: true
-```
-
----
-
-## 🔧 开发
-
-### 开发命令
-
-```bash
-# 安装依赖
-npm install
-
-# 构建所有包
-npm run build
-
-# 运行测试
-npm test
-
-# 运行演示
-npm run demo
-```
-
-### MCP 自循环测试
-
-```bash
-# 构建
-npm run build
-
-# 运行 MCP 自循环测试（Client 连接 Server 端到端验证）
-node --input-type=module < mcp-test.mjs
-```
-
 ---
 
 ## 🗺️ Roadmap
@@ -363,6 +285,8 @@ node --input-type=module < mcp-test.mjs
 - [x] Trae/VSCode 插件适配器
 - [x] REP v0.2 规则格式标准
 - [x] 本地规则库：`~/.ruleforge/rules/` 全局存储 + 索引
+- [x] **4D 坐标规则引擎**：与 Nexus 宇宙坐标模型对齐，R1-R4 四条验证规则
+- [x] **权重自适应**：规则权重根据使用效果自动调整（η=0.2）
 
 ### v1.5（计划中）
 
@@ -386,14 +310,6 @@ node --input-type=module < mcp-test.mjs
 
 ## 🤝 贡献
 
-### 提交规则
-
-1. 提取候选规则：`ruleforge extract --log ./session.jsonl`
-2. 验证格式：`ruleforge validate ./candidate-rule.yaml`
-3. Fork → 添加到 `examples/` → PR
-
-### 开发贡献
-
 ```bash
 git clone https://github.com/kialajin-l/RuleForge.git
 cd RuleForge
@@ -411,25 +327,12 @@ MIT License
 
 ## 🙏 致谢
 
-- [Xiaomi Claw](https://github.com/XiaomiMiClaw) — AI 助手平台，RuleForge MCP Server 的核心运行环境
-- [Trae](https://www.trae.ai/) — 灵感激荡的 AI 原生编辑器，Vibe Coding 理念的完美载体
-- [Qwen (通义千问)](https://qwenlm.github.io/) — 提供卓越的代码生成与逻辑推理支持
+- [Xiaomi Claw](https://github.com/XiaomiMiClaw) — AI 助手平台
+- [Trae](https://www.trae.ai/) — Vibe Coding 理念的完美载体
+- [Qwen (通义千问)](https://qwenlm.github.io/) — 代码生成与逻辑推理支持
 - [Model Context Protocol](https://modelcontextprotocol.io/) — AI Agent 标准化工具协议
-- [ESLint](https://eslint.org/) — JavaScript 代码检查工具
-- [Prettier](https://prettier.io/) — 代码格式化工具
 - [Zod](https://zod.dev/) — TypeScript 模式验证
-- [Commander.js](https://github.com/tj/commander.js) — 命令行工具框架
 
 ---
 
-## 📞 联系我们
-
-- **GitHub Issues**: [问题反馈](https://github.com/kialajin-l/RuleForge/issues)
-- **Discord**: [社区讨论](https://discord.gg/ruleforge)
-- **Email**: team@ruleforge.dev
-
-## 🌟 Star 历史
-
-[![Star History Chart](https://api.star-history.com/svg?repos=kialajin-l/RuleForge&type=Date)](https://star-history.com/#kialajin-l/RuleForge&Date)
-
-如果 RuleForge 对你的开发工作流有帮助，请给个 ⭐️ 支持一下！
+> **RuleForge** — 将隐性习惯转化为显性规范。
