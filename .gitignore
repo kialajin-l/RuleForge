@@ -62,6 +62,7 @@ packages/.test-rf-home/
 
 # Experimental / not ready
 packages/vscode/
+packages/core/src/coordinate.disabled/
 
 # Internal / non-public docs
 docs/internal/

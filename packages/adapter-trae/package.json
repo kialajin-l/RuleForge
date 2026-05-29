@@ -36,7 +36,7 @@
         "watch": "npm run build -- --watch"
     },
     "description": "Extract and share coding rules from your Trae sessions",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "activationEvents": [
         "onLanguage",
         "onCommand:ruleforge.extract",
